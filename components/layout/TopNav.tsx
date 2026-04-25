@@ -86,7 +86,7 @@ export function TopNav() {
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="h-8 px-2 text-xs font-medium rounded-lg gap-1"
+                  className="h-8 px-2 text-xs font-medium rounded-lg gap-1 w-[7rem] justify-center"
                 >
                   <Calendar className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">

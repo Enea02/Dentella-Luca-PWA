@@ -62,9 +62,12 @@ export function getOrderStatus(items: OrderItem[]): CustomerStatus {
 }
 
 // Sort customers by status (pending first, then partial, then done)
-export function sortByStatus<T extends { status: CustomerStatus }>(items: T[]): T[] {
+export function sortByStatus<T extends { status: CustomerStatus; customerName: string }>(items: T[]): T[] {
   const order: Record<CustomerStatus, number> = { pending: 0, partial: 1, done: 2 }
-  return [...items].sort((a, b) => order[a.status] - order[b.status])
+  return [...items].sort((a, b) => {
+    const diff = order[a.status] - order[b.status]
+    return diff !== 0 ? diff : a.customerName.localeCompare(b.customerName)
+  })
 }
 
 // Generate a simple ID

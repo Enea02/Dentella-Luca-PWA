@@ -1,8 +1,8 @@
 'use client'
 
 import useSWR from 'swr'
-import { productsApi, customersApi, ordersApi, divisorsApi } from '@/lib/api'
-import type { ComputedDayOrder, Customer, Divisor, Product } from '@/lib/types'
+import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem } from '@/lib/api'
+import type { ComputedDayOrder, Customer, Divisor, OrderItem, Product } from '@/lib/types'
 
 // Products hook
 export function useProducts() {
@@ -77,6 +77,14 @@ export function useOrders(date: string) {
     isLoading,
     error,
     mutate,
+    createOrder: async (customerId: string, items: OrderItem[]) => {
+      await createDailyOrder(date, customerId, items)
+      await mutate()
+    },
+    addItem: async (customerId: string, item: OrderItem) => {
+      await addOrderItem(date, customerId, item)
+      await mutate()
+    },
     toggleItem: async (customerId: string, productId: string, done: boolean) => {
       // Optimistic update
       mutate(

@@ -1,4 +1,4 @@
-import type { ComputedDayOrder, Customer, Divisor, Product, User } from './types'
+import type { ComputedDayOrder, Customer, Divisor, OrderItem, Product, User } from './types'
 import { mockCustomers, mockDailyOrders, mockDivisors, mockProducts, mockRecurringOrders, mockUser } from './mockData'
 import { clone, dayOfWeek, getOrderStatus } from './utils'
 
@@ -166,14 +166,14 @@ export const ordersApi = {
   async getForDate(date: string): Promise<ComputedDayOrder[]> {
     if (USE_MOCK) {
       const weekday = dayOfWeek(date)
-      const orders: ComputedDayOrder[] = []
+      const orderMap = new Map<string, ComputedDayOrder>()
 
-      // Add recurring orders for fixed customers active on this weekday
+      // Add recurring orders first
       for (const recurring of mockRecurringOrders) {
         if (recurring.weekdays.includes(weekday)) {
           const customer = mockCustomers.find(c => c.id === recurring.customerId)
           if (customer) {
-            orders.push({
+            orderMap.set(recurring.customerId, {
               customerId: recurring.customerId,
               customerName: customer.name,
               customerType: customer.type,
@@ -184,15 +184,16 @@ export const ordersApi = {
         }
       }
 
-      // Add daily orders for this specific date
+      // Daily orders override recurring for the same customer
       for (const daily of mockDailyOrders) {
         if (daily.date === date) {
           const customer = mockCustomers.find(c => c.id === daily.customerId)
           if (customer) {
-            orders.push({
+            const hadRecurring = orderMap.has(daily.customerId)
+            orderMap.set(daily.customerId, {
               customerId: daily.customerId,
               customerName: customer.name,
-              customerType: customer.type,
+              customerType: hadRecurring ? customer.type : 'single',
               items: clone(daily.items),
               status: getOrderStatus(daily.items),
             })
@@ -200,7 +201,7 @@ export const ordersApi = {
         }
       }
 
-      return orders
+      return Array.from(orderMap.values())
     }
     return fetchApi<ComputedDayOrder[]>(`/orders?date=${date}`)
   },
@@ -234,6 +235,61 @@ export const ordersApi = {
       body: JSON.stringify({ date, customerId, productId, done }),
     })
   },
+}
+
+export function getCustomerRecurringOrder(customerId: string): import('./types').RecurringOrder | null {
+  return mockRecurringOrders.find(r => r.customerId === customerId) ?? null
+}
+
+export async function upsertRecurringOrder(
+  customerId: string,
+  weekdays: import('./types').Weekday[],
+  items: OrderItem[]
+): Promise<void> {
+  if (USE_MOCK) {
+    const index = mockRecurringOrders.findIndex(r => r.customerId === customerId)
+    if (index !== -1) {
+      mockRecurringOrders[index] = { ...mockRecurringOrders[index], weekdays, items }
+    } else {
+      mockRecurringOrders.push({ id: `ro${Date.now()}`, customerId, weekdays, items })
+    }
+    return
+  }
+  await fetchApi(`/orders/recurring/${customerId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ weekdays, items }),
+  })
+}
+
+export async function createDailyOrder(date: string, customerId: string, items: OrderItem[]): Promise<void> {
+  if (USE_MOCK) {
+    mockDailyOrders.push({ id: `do${Date.now()}`, date, customerId, items })
+    return
+  }
+  await fetchApi('/orders/daily', {
+    method: 'POST',
+    body: JSON.stringify({ date, customerId, items }),
+  })
+}
+
+export async function addOrderItem(date: string, customerId: string, item: OrderItem): Promise<void> {
+  if (USE_MOCK) {
+    const existing = mockDailyOrders.find(d => d.date === date && d.customerId === customerId)
+    if (existing) {
+      existing.items.push(item)
+      return
+    }
+    // Customer has only a recurring order: create a daily override with recurring items + new item
+    const weekday = dayOfWeek(date)
+    const recurring = mockRecurringOrders.find(r => r.customerId === customerId && r.weekdays.includes(weekday))
+    const baseItems = recurring ? clone(recurring.items) : []
+    mockDailyOrders.push({ id: `do${Date.now()}`, date, customerId, items: [...baseItems, item] })
+    return
+  }
+  await fetchApi('/orders/items', {
+    method: 'POST',
+    body: JSON.stringify({ date, customerId, item }),
+  })
 }
 
 // Divisors API

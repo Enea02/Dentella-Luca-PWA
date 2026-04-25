@@ -1,11 +1,14 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useState } from 'react'
 import { useAppStore } from '@/lib/store'
 import { cn, getOrderStatus, sortByStatus } from '@/lib/utils'
-import type { ComputedDayOrder } from '@/lib/types'
+import type { ComputedDayOrder, OrderItem } from '@/lib/types'
 import { STATUS_COLORS } from '@/lib/constants'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useAuth } from '@/hooks/useAuth'
+import { useOrders } from '@/hooks/useData'
+import { NewDailyOrderDialog } from './NewDailyOrderDialog'
 
 interface CustomerListProps {
   orders: ComputedDayOrder[]
@@ -13,16 +16,19 @@ interface CustomerListProps {
 }
 
 export function CustomerList({ orders, isLoading }: CustomerListProps) {
-  const { selectedCustomerId, setSelectedCustomerId } = useAppStore()
+  const { selectedCustomerId, setSelectedCustomerId, selectedDate } = useAppStore()
+  const { role } = useAuth()
+  const { createOrder } = useOrders(selectedDate)
+  const [search, setSearch] = useState('')
+  const [isNewOrderOpen, setIsNewOrderOpen] = useState(false)
 
-  // Sort orders by status (pending first, then partial, then done)
-  const sortedOrders = useMemo(() => {
-    const withStatus = orders.map(order => ({
-      ...order,
-      status: getOrderStatus(order.items),
-    }))
-    return sortByStatus(withStatus)
-  }, [orders])
+  const sortedOrders = sortByStatus(
+    orders.map(order => ({ ...order, status: getOrderStatus(order.items) }))
+  ).filter(order => order.customerName.toLowerCase().includes(search.toLowerCase()))
+
+  const handleCreateOrder = async (customerId: string, items: OrderItem[]) => {
+    await createOrder(customerId, items)
+  }
 
   if (isLoading) {
     return (
@@ -36,63 +42,90 @@ export function CustomerList({ orders, isLoading }: CustomerListProps) {
     )
   }
 
-  if (sortedOrders.length === 0) {
-    return (
-      <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 text-center">
-        <p className="text-slate-500">Nessun ordine per questa data</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden">
-      <ScrollArea className="h-[calc(100vh-200px)] md:h-[62vh]">
-        <div className="p-2 space-y-1">
-          {sortedOrders.map((order) => {
-            const isSelected = selectedCustomerId === order.customerId
-            const doneCount = order.items.filter(i => i.done).length
-            const totalCount = order.items.length
-            const status = getOrderStatus(order.items)
-
-            return (
-              <button
-                key={order.customerId}
-                onClick={() => setSelectedCustomerId(order.customerId)}
-                className={cn(
-                  'w-full px-4 py-3 rounded-xl text-left transition-all',
-                  'flex items-center justify-between gap-2',
-                  isSelected
-                    ? 'bg-slate-900 text-white'
-                    : STATUS_COLORS[status]
-                )}
-              >
-                <div className="flex flex-col min-w-0">
-                  <span className={cn(
-                    'font-medium truncate',
-                    isSelected ? 'text-white' : 'text-slate-900'
-                  )}>
-                    {order.customerName}
-                  </span>
-                  <span className={cn(
-                    'text-xs',
-                    isSelected ? 'text-slate-300' : 'text-slate-500'
-                  )}>
-                    {order.customerType === 'fixed' ? 'Fisso' : 'Giornaliero'}
-                  </span>
-                </div>
-                <div className={cn(
-                  'text-sm font-medium shrink-0',
-                  isSelected ? 'text-slate-200' : 
-                    status === 'done' ? 'text-emerald-700' :
-                    status === 'partial' ? 'text-red-700' : 'text-slate-500'
-                )}>
-                  {doneCount}/{totalCount}
-                </div>
-              </button>
-            )
-          })}
+    <>
+      <div className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden">
+        {/* Search bar + new order button */}
+        <div className="flex items-center gap-2 p-3 border-b border-slate-100">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cerca cliente..."
+            className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none"
+          />
+          {role === 'owner' && (
+            <button
+              type="button"
+              onClick={() => setIsNewOrderOpen(true)}
+              className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white shrink-0"
+            >
+              + Nuovo
+            </button>
+          )}
         </div>
-      </ScrollArea>
-    </div>
+
+        {sortedOrders.length === 0 ? (
+          <div className="px-4 py-6 text-center text-sm text-slate-500">
+            {search ? 'Nessun cliente trovato' : 'Nessun ordine per questa data'}
+          </div>
+        ) : (
+          <ScrollArea className="h-[calc(100vh-260px)] md:h-[55vh]">
+            <div className="p-2 space-y-1">
+              {sortedOrders.map((order) => {
+                const isSelected = selectedCustomerId === order.customerId
+                const doneCount = order.items.filter(i => i.done).length
+                const totalCount = order.items.length
+                const status = getOrderStatus(order.items)
+
+                return (
+                  <button
+                    key={order.customerId}
+                    onClick={() => setSelectedCustomerId(order.customerId)}
+                    className={cn(
+                      'w-full px-4 py-3 rounded-xl text-left transition-all',
+                      'flex items-center justify-between gap-2',
+                      isSelected
+                        ? 'bg-slate-900 text-white'
+                        : STATUS_COLORS[status]
+                    )}
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className={cn(
+                        'font-medium truncate',
+                        isSelected ? 'text-white' : 'text-slate-900'
+                      )}>
+                        {order.customerName}
+                      </span>
+                      <span className={cn(
+                        'text-xs',
+                        isSelected ? 'text-slate-300' : 'text-slate-500'
+                      )}>
+                        {order.customerType === 'fixed' ? 'Fisso' : 'Giornaliero'}
+                      </span>
+                    </div>
+                    <div className={cn(
+                      'text-sm font-medium shrink-0',
+                      isSelected ? 'text-slate-200' :
+                        status === 'done' ? 'text-emerald-700' :
+                        status === 'partial' ? 'text-red-700' : 'text-slate-500'
+                    )}>
+                      {doneCount}/{totalCount}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
+
+      <NewDailyOrderDialog
+        open={isNewOrderOpen}
+        onClose={() => setIsNewOrderOpen(false)}
+        onSave={handleCreateOrder}
+        existingOrders={orders}
+      />
+    </>
   )
 }

@@ -7,13 +7,19 @@ import { DayOrder } from '@/components/orders/DayOrder'
 
 export default function OrdersPage() {
   const { selectedDate, selectedCustomerId } = useAppStore()
-  const { orders, isLoading, toggleItem } = useOrders(selectedDate)
+  const { orders, isLoading, toggleItem, addItem } = useOrders(selectedDate)
 
   const selectedOrder = orders.find(o => o.customerId === selectedCustomerId) || null
 
   const handleToggleItem = async (productId: string, done: boolean) => {
     if (selectedCustomerId) {
       await toggleItem(selectedCustomerId, productId, done)
+    }
+  }
+
+  const handleAddItem = async (item: import('@/lib/types').OrderItem) => {
+    if (selectedCustomerId) {
+      await addItem(selectedCustomerId, item)
     }
   }
 
@@ -28,7 +34,7 @@ export default function OrdersPage() {
       {/* Order details (right column) */}
       <div>
         <h2 className="text-lg font-semibold text-slate-900 mb-3">Ordine</h2>
-        <DayOrder order={selectedOrder} onToggleItem={handleToggleItem} />
+        <DayOrder order={selectedOrder} onToggleItem={handleToggleItem} onAddItem={handleAddItem} />
       </div>
     </div>
   )

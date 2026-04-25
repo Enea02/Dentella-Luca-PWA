@@ -6,6 +6,8 @@ import { useAppStore } from '@/lib/store'
 import { ProductListCard } from '@/components/product-lists/ProductListCard'
 import { Input } from '@/components/ui/input'
 import { Search, Loader2 } from 'lucide-react'
+import { PRODUCT_SECTIONS, SECTION_COLORS } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 
 export default function ProductListsPage() {
   const { selectedDate } = useAppStore()
@@ -15,19 +17,14 @@ export default function ProductListsPage() {
 
   const isLoading = ordersLoading || productsLoading
 
-  // Build product lists with customer orders
   const productLists = useMemo(() => {
-    const map = new Map<string, { product: typeof products[0], customerOrders: { customerName: string, quantity: number, unit: string }[] }>()
+    const map = new Map<string, { product: typeof products[0]; customerOrders: { customerName: string; quantity: number; unit: string }[] }>()
 
     for (const order of orders) {
       for (const item of order.items) {
         const product = products.find(p => p.id === item.productId)
         if (!product) continue
-
-        if (!map.has(product.id)) {
-          map.set(product.id, { product, customerOrders: [] })
-        }
-
+        if (!map.has(product.id)) map.set(product.id, { product, customerOrders: [] })
         map.get(product.id)!.customerOrders.push({
           customerName: order.customerName,
           quantity: item.quantity,
@@ -36,20 +33,18 @@ export default function ProductListsPage() {
       }
     }
 
-    return Array.from(map.values())
-      .filter(pl => pl.customerOrders.length > 0)
-      .sort((a, b) => a.product.name.localeCompare(b.product.name))
+    return Array.from(map.values()).filter(pl => pl.customerOrders.length > 0)
   }, [orders, products])
 
-  // Filter by search
-  const filteredLists = useMemo(() => {
-    if (!search.trim()) return productLists
-    const q = search.toLowerCase()
-    return productLists.filter(pl => 
-      pl.product.name.toLowerCase().includes(q) ||
-      pl.product.section.toLowerCase().includes(q)
-    )
-  }, [productLists, search])
+  const q = search.toLowerCase()
+
+  const grouped = PRODUCT_SECTIONS.map(section => ({
+    section,
+    items: productLists
+      .filter(pl => pl.product.section === section)
+      .filter(pl => !q || pl.product.name.toLowerCase().includes(q) || pl.product.section.toLowerCase().includes(q))
+      .sort((a, b) => a.product.name.localeCompare(b.product.name)),
+  })).filter(g => g.items.length > 0)
 
   if (isLoading) {
     return (
@@ -60,10 +55,9 @@ export default function ProductListsPage() {
   }
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-lg font-semibold text-slate-900">Liste Prodotti</h1>
-        
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
@@ -76,22 +70,37 @@ export default function ProductListsPage() {
         </div>
       </div>
 
-      {filteredLists.length === 0 ? (
+      {grouped.length === 0 ? (
         <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 text-center">
           <p className="text-slate-500">
             {search ? 'Nessun prodotto trovato' : 'Nessun ordine per questa data'}
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredLists.map(pl => (
-            <ProductListCard
-              key={pl.product.id}
-              product={pl.product}
-              customerOrders={pl.customerOrders}
-            />
-          ))}
-        </div>
+        grouped.map(({ section, items }) => (
+          <div key={section}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className={cn(
+                'px-2.5 py-0.5 rounded-full text-xs font-semibold',
+                SECTION_COLORS[section]
+              )}>
+                {section}
+              </span>
+              <span className="text-xs text-slate-400">
+                {items.length} {items.length === 1 ? 'prodotto' : 'prodotti'}
+              </span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {items.map(pl => (
+                <ProductListCard
+                  key={pl.product.id}
+                  product={pl.product}
+                  customerOrders={pl.customerOrders}
+                />
+              ))}
+            </div>
+          </div>
+        ))
       )}
     </div>
   )
