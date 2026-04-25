@@ -1,8 +1,8 @@
 'use client'
 
 import useSWR from 'swr'
-import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem } from '@/lib/api'
-import type { ComputedDayOrder, Customer, Divisor, OrderItem, Product } from '@/lib/types'
+import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi } from '@/lib/api'
+import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, Role, User } from '@/lib/types'
 
 // Products hook
 export function useProducts() {
@@ -135,6 +135,53 @@ export function useDivisors() {
         false
       )
       await divisorsApi.update(productId, value)
+      await mutate()
+    },
+  }
+}
+
+// Bakery hook
+export function useBakery() {
+  const { data, error, isLoading, mutate } = useSWR<Bakery>(
+    'bakery',
+    () => bakeryApi.get(),
+    { revalidateOnFocus: false }
+  )
+
+  return {
+    bakery: data ?? null,
+    isLoading,
+    error,
+    update: async (name: string) => {
+      await bakeryApi.update(name)
+      await mutate()
+    },
+  }
+}
+
+// Users hook
+export function useUsers() {
+  const { data, error, isLoading, mutate } = useSWR<User[]>(
+    'users',
+    () => usersApi.list(),
+    { revalidateOnFocus: false }
+  )
+
+  return {
+    users: data ?? [],
+    isLoading,
+    error,
+    create: async (email: string, role: Role) => {
+      const user = await usersApi.create(email, role)
+      await mutate()
+      return user
+    },
+    update: async (id: string, role: Role) => {
+      await usersApi.update(id, role)
+      await mutate()
+    },
+    remove: async (id: string) => {
+      await usersApi.delete(id)
       await mutate()
     },
   }

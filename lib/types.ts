@@ -74,6 +74,12 @@ export interface Divisor {
   value: number;
 }
 
+// Bakery
+export interface Bakery {
+  id: string;
+  name: string;
+}
+
 // User/Auth
 export interface User {
   id: string;

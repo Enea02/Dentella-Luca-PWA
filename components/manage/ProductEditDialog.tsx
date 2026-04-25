@@ -76,7 +76,7 @@ export function ProductEditDialog({ product, open, onClose }: ProductEditDialogP
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="rounded-3xl">
+      <DialogContent aria-describedby={undefined} className="rounded-3xl">
         <DialogHeader>
           <DialogTitle>
             {isNew ? 'Nuovo Prodotto' : 'Modifica Prodotto'}

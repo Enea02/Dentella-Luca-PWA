@@ -1,4 +1,10 @@
-import type { Customer, DailyOrder, Divisor, Product, RecurringOrder, User } from './types'
+import type { Bakery, Customer, DailyOrder, Divisor, Product, RecurringOrder, User } from './types'
+
+// Mock bakery
+export const mockBakery: Bakery = {
+  id: 'bakery-1',
+  name: 'Panificio Da Mario',
+}
 
 // Mock user
 export const mockUser: User = {
@@ -8,6 +14,18 @@ export const mockUser: User = {
   bakeryId: 'bakery-1',
   bakeryName: 'Panificio Da Mario',
 }
+
+// Mock users list (all users of the bakery)
+export const mockUsers: User[] = [
+  mockUser,
+  {
+    id: 'user-2',
+    email: 'mario.rossi@panificio.it',
+    role: 'staff',
+    bakeryId: 'bakery-1',
+    bakeryName: 'Panificio Da Mario',
+  },
+]
 
 // Mock products
 export const mockProducts: Product[] = [

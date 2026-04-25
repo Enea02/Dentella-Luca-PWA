@@ -1,10 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
-import { Calendar, LogOut, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, LogOut, ChevronLeft, ChevronRight, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
@@ -12,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useAppStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { RoleBadge } from './RoleBadge'
+import { BakeryDialog } from './BakeryDialog'
 
 const navLinks = [
   { href: '/orders', label: 'Ordini' },
@@ -28,6 +30,7 @@ export function TopNav() {
   const pathname = usePathname()
   const { role, logout, user } = useAuth()
   const { selectedDate, setSelectedDate } = useAppStore()
+  const [bakeryOpen, setBakeryOpen] = useState(false)
 
   const allLinks = role === 'owner' ? [...navLinks, ...ownerLinks] : navLinks
 
@@ -44,12 +47,24 @@ export function TopNav() {
   }
 
   return (
+    <>
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200">
       <div className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
-        {/* Logo */}
-        <Link href="/orders" className="font-bold text-lg text-slate-900 shrink-0">
-          Panificio
-        </Link>
+        {/* Logo + bakery button */}
+        <div className="flex items-center gap-1 shrink-0">
+          <Link href="/orders" className="font-bold text-lg text-slate-900">
+            Panificio
+          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-400 hover:text-slate-700"
+            onClick={() => setBakeryOpen(true)}
+            title="Dettagli panetteria"
+          >
+            <Store className="h-4 w-4" />
+          </Button>
+        </div>
 
         {/* Nav links - scrollable on mobile */}
         <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide mx-4">
@@ -137,5 +152,8 @@ export function TopNav() {
         </div>
       </div>
     </header>
+
+      <BakeryDialog open={bakeryOpen} onClose={() => setBakeryOpen(false)} />
+    </>
   )
 }

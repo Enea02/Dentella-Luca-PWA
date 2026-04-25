@@ -1,5 +1,5 @@
-import type { ComputedDayOrder, Customer, Divisor, OrderItem, Product, User } from './types'
-import { mockCustomers, mockDailyOrders, mockDivisors, mockProducts, mockRecurringOrders, mockUser } from './mockData'
+import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, User } from './types'
+import { mockBakery, mockCustomers, mockDailyOrders, mockDivisors, mockProducts, mockRecurringOrders, mockUser, mockUsers } from './mockData'
 import { clone, dayOfWeek, getOrderStatus } from './utils'
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true'
@@ -290,6 +290,63 @@ export async function addOrderItem(date: string, customerId: string, item: Order
     method: 'POST',
     body: JSON.stringify({ date, customerId, item }),
   })
+}
+
+// Bakery API
+export const bakeryApi = {
+  async get(): Promise<Bakery> {
+    if (USE_MOCK) return clone(mockBakery)
+    return fetchApi<Bakery>('/bakery')
+  },
+
+  async update(name: string): Promise<Bakery> {
+    if (USE_MOCK) {
+      mockBakery.name = name
+      return clone(mockBakery)
+    }
+    return fetchApi<Bakery>('/bakery', { method: 'PATCH', body: JSON.stringify({ name }) })
+  },
+}
+
+// Users API
+export const usersApi = {
+  async list(): Promise<User[]> {
+    if (USE_MOCK) return clone(mockUsers)
+    return fetchApi<User[]>('/users')
+  },
+
+  async create(email: string, role: import('./types').Role): Promise<User> {
+    if (USE_MOCK) {
+      const newUser: User = {
+        id: `user-${Date.now()}`,
+        email,
+        role,
+        bakeryId: mockBakery.id,
+        bakeryName: mockBakery.name,
+      }
+      mockUsers.push(newUser)
+      return clone(newUser)
+    }
+    return fetchApi<User>('/users', { method: 'POST', body: JSON.stringify({ email, role }) })
+  },
+
+  async update(id: string, role: import('./types').Role): Promise<User> {
+    if (USE_MOCK) {
+      const user = mockUsers.find(u => u.id === id)
+      if (user) user.role = role
+      return clone(user!)
+    }
+    return fetchApi<User>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify({ role }) })
+  },
+
+  async delete(id: string): Promise<void> {
+    if (USE_MOCK) {
+      const index = mockUsers.findIndex(u => u.id === id)
+      if (index !== -1) mockUsers.splice(index, 1)
+      return
+    }
+    await fetchApi(`/users/${id}`, { method: 'DELETE' })
+  },
 }
 
 // Divisors API

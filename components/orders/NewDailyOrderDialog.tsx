@@ -94,7 +94,7 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md rounded-3xl">
+      <DialogContent aria-describedby={undefined} className="max-w-md rounded-3xl">
         <DialogHeader>
           <DialogTitle>Nuovo ordine giornaliero</DialogTitle>
         </DialogHeader>
