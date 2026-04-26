@@ -47,7 +47,8 @@ export const authApi = {
       // Simulate login delay
       await new Promise(r => setTimeout(r, 500))
       if (email && password) {
-        return clone(mockUser)
+        const matched = mockUsers.find(u => u.email === email)
+        return clone(matched ?? mockUser)
       }
       throw new Error('Invalid credentials')
     }

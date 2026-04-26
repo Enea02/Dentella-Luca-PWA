@@ -19,26 +19,28 @@ export function RoleBadge() {
   const { role, user } = useAuth()
   const { demoRole, setDemoRole } = useAppStore()
   const isDev = process.env.NODE_ENV === 'development'
+  const isMock = process.env.NEXT_PUBLIC_USE_MOCK === 'true'
+  const canToggle = isDev || isMock
 
   const handleToggle = () => {
-    if (!isDev) return
+    if (!canToggle) return
     setDemoRole(demoRole === 'owner' ? 'staff' : demoRole === 'staff' ? null : 'owner')
   }
 
   return (
     <button
       onClick={handleToggle}
-      disabled={!isDev}
+      disabled={!canToggle}
       className={cn(
         'px-2 py-1 rounded-lg text-xs font-medium transition-colors',
         roleColors[role],
-        isDev && 'cursor-pointer hover:opacity-80',
-        !isDev && 'cursor-default'
+        canToggle && 'cursor-pointer hover:opacity-80',
+        !canToggle && 'cursor-default'
       )}
-      title={isDev ? 'Click per cambiare ruolo (solo dev)' : undefined}
+      title={canToggle ? 'Click per cambiare ruolo' : undefined}
     >
       {roleLabels[role]}
-      {demoRole && isDev && (
+      {demoRole && canToggle && (
         <span className="ml-1 opacity-60">(demo)</span>
       )}
     </button>
