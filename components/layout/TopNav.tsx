@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
-import { Calendar, LogOut, ChevronLeft, ChevronRight, Store } from 'lucide-react'
+import { Calendar, LogOut, ChevronLeft, ChevronRight, Store, Maximize2, Minimize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
@@ -29,7 +29,7 @@ const ownerLinks = [
 export function TopNav() {
   const pathname = usePathname()
   const { role, logout, user } = useAuth()
-  const { selectedDate, setSelectedDate } = useAppStore()
+  const { selectedDate, setSelectedDate, workMode, setWorkMode } = useAppStore()
   const [bakeryOpen, setBakeryOpen] = useState(false)
 
   const allLinks = role === 'owner' ? [...navLinks, ...ownerLinks] : navLinks
@@ -135,6 +135,22 @@ export function TopNav() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Work mode toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'h-8 w-8 transition-colors',
+              workMode
+                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                : 'text-slate-500 hover:text-slate-900'
+            )}
+            onClick={() => setWorkMode(!workMode)}
+            title={workMode ? 'Disattiva modalità lavoro' : 'Attiva modalità lavoro'}
+          >
+            {workMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
 
           {/* Role badge */}
           <RoleBadge />

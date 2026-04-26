@@ -16,7 +16,7 @@ interface CustomerListProps {
 }
 
 export function CustomerList({ orders, isLoading }: CustomerListProps) {
-  const { selectedCustomerId, setSelectedCustomerId, selectedDate } = useAppStore()
+  const { selectedCustomerId, setSelectedCustomerId, selectedDate, workMode } = useAppStore()
   const { role } = useAuth()
   const { createOrder } = useOrders(selectedDate)
   const [search, setSearch] = useState('')
@@ -83,8 +83,9 @@ export function CustomerList({ orders, isLoading }: CustomerListProps) {
                     key={order.customerId}
                     onClick={() => setSelectedCustomerId(order.customerId)}
                     className={cn(
-                      'w-full px-4 py-3 rounded-xl text-left transition-all',
+                      'w-full px-4 rounded-xl text-left transition-all',
                       'flex items-center justify-between gap-2',
+                      workMode ? 'py-4' : 'py-3',
                       isSelected
                         ? 'bg-slate-900 text-white'
                         : STATUS_COLORS[status]
@@ -93,19 +94,21 @@ export function CustomerList({ orders, isLoading }: CustomerListProps) {
                     <div className="flex flex-col min-w-0">
                       <span className={cn(
                         'font-medium truncate',
+                        workMode ? 'text-base' : 'text-sm',
                         isSelected ? 'text-white' : 'text-slate-900'
                       )}>
                         {order.customerName}
                       </span>
                       <span className={cn(
-                        'text-xs',
+                        workMode ? 'text-sm' : 'text-xs',
                         isSelected ? 'text-slate-300' : 'text-slate-500'
                       )}>
                         {order.customerType === 'fixed' ? 'Fisso' : 'Giornaliero'}
                       </span>
                     </div>
                     <div className={cn(
-                      'text-sm font-medium shrink-0',
+                      'font-semibold shrink-0',
+                      workMode ? 'text-base' : 'text-sm',
                       isSelected ? 'text-slate-200' :
                         status === 'done' ? 'text-emerald-700' :
                         status === 'partial' ? 'text-red-700' : 'text-slate-500'

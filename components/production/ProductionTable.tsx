@@ -4,6 +4,7 @@ import { cn, getOrderStatus } from '@/lib/utils'
 import { STATUS_COLORS } from '@/lib/constants'
 import type { ComputedDayOrder } from '@/lib/types'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { useAppStore } from '@/lib/store'
 
 export interface ProductionSection {
   id: string
@@ -19,6 +20,7 @@ interface ProductionTableProps {
 }
 
 export function ProductionTable({ title, sections, orders, onToggleCell }: ProductionTableProps) {
+  const workMode = useAppStore(state => state.workMode)
   const allProductIds = sections.flatMap(s => s.products.map(p => p.id))
 
   const relevantOrders = orders.filter(order =>
@@ -82,7 +84,8 @@ export function ProductionTable({ title, sections, orders, onToggleCell }: Produ
                 <tr key={order.customerId} className="border-b border-slate-50 last:border-0">
                   {/* Customer name cell */}
                   <td className={cn(
-                    'w-36 px-3 py-2 text-sm font-medium border-r border-slate-100 align-middle',
+                    'px-3 py-2 font-medium border-r border-slate-100 align-middle',
+                    workMode ? 'w-44 text-base' : 'w-36 text-sm',
                     STATUS_COLORS[status]
                   )}>
                     <span className="block truncate">{order.customerName}</span>
@@ -98,7 +101,8 @@ export function ProductionTable({ title, sections, orders, onToggleCell }: Produ
                           <td
                             key={product.id}
                             className={cn(
-                              'w-20 text-center text-slate-300 text-sm align-middle',
+                              'text-center text-slate-300 align-middle',
+                              workMode ? 'w-28 text-base' : 'w-20 text-sm',
                               idx === section.products.length - 1 && 'border-r border-slate-100'
                             )}
                           >
@@ -111,25 +115,29 @@ export function ProductionTable({ title, sections, orders, onToggleCell }: Produ
                         <td
                           key={product.id}
                           className={cn(
-                            'w-20 p-0 align-middle',
+                            'p-0 align-middle',
+                            workMode ? 'w-28' : 'w-20',
                             idx === section.products.length - 1 && 'border-r border-slate-100'
                           )}
                         >
                           <button
                             onClick={() => onToggleCell(order.customerId, product.id, !item.done)}
                             className={cn(
-                              'w-full h-full min-h-[44px] flex flex-col items-center justify-center gap-0.5 px-1 py-2 transition-colors',
+                              'w-full h-full flex flex-col items-center justify-center gap-0.5 px-1 transition-colors',
+                              workMode ? 'min-h-[72px] py-3' : 'min-h-[44px] py-2',
                               item.done ? 'bg-emerald-50' : 'hover:bg-slate-50'
                             )}
                           >
                             <span className={cn(
-                              'text-sm font-semibold leading-none',
+                              'font-semibold leading-none',
+                              workMode ? 'text-base' : 'text-sm',
                               item.done ? 'text-emerald-700' : 'text-slate-800'
                             )}>
                               {item.quantity}
                             </span>
                             <span className={cn(
-                              'text-xs leading-none',
+                              'leading-none',
+                              workMode ? 'text-sm' : 'text-xs',
                               item.done ? 'text-emerald-500' : 'text-slate-400'
                             )}>
                               {item.unit === 'kg' ? 'kg' : 'pz'}

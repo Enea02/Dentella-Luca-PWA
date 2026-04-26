@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(vercel deploy *)"
+      "Bash(vercel deploy *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)"
     ]
   }
 }
