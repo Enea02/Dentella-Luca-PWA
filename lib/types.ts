@@ -7,14 +7,15 @@ export type CustomerStatus = "pending" | "partial" | "done";
 // Weekday (1 = Monday, 7 = Sunday)
 export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-// Product sections
-export type ProductSection = 
-  | "Dolci"
-  | "Pane comune"
-  | "Salati"
-  | "Pizze farcite"
-  | "Focacce farcite"
-  | "Specialità";
+// Product sections — string to allow dynamic creation
+export type ProductSection = string;
+
+export interface SectionDef {
+  id: string;
+  name: string;
+  color: string; // Tailwind badge classes
+  order: number;
+}
 
 // Core entities
 export interface Product {

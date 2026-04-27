@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { PRODUCT_SECTIONS } from '@/lib/constants'
-import type { Product, ProductSection } from '@/lib/types'
+import { useSections } from '@/hooks/useData'
+import type { Product } from '@/lib/types'
 import { Loader2 } from 'lucide-react'
 
 interface ProductEditDialogProps {
@@ -21,8 +21,9 @@ interface ProductEditDialogProps {
 
 export function ProductEditDialog({ product, open, onClose }: ProductEditDialogProps) {
   const { create, update } = useProducts()
+  const { sections } = useSections()
   const [name, setName] = useState('')
-  const [section, setSection] = useState<ProductSection>('Dolci')
+  const [section, setSection] = useState('Dolci')
   const [isKg, setIsKg] = useState(false)
   const [piecesPerKg, setPiecesPerKg] = useState('1')
   const [isLoading, setIsLoading] = useState(false)
@@ -98,13 +99,13 @@ export function ProductEditDialog({ product, open, onClose }: ProductEditDialogP
 
           <div className="space-y-2">
             <Label htmlFor="section">Sezione</Label>
-            <Select value={section} onValueChange={(v) => setSection(v as ProductSection)}>
+            <Select value={section} onValueChange={setSection}>
               <SelectTrigger className="rounded-xl">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PRODUCT_SECTIONS.map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                {sections.map(s => (
+                  <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

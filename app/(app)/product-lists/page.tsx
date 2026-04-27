@@ -1,12 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useOrders, useProducts } from '@/hooks/useData'
+import { useOrders, useProducts, useSections } from '@/hooks/useData'
 import { useAppStore } from '@/lib/store'
 import { ProductListCard } from '@/components/product-lists/ProductListCard'
 import { Input } from '@/components/ui/input'
 import { Search, Loader2 } from 'lucide-react'
-import { PRODUCT_SECTIONS, SECTION_COLORS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 export default function ProductListsPage() {
@@ -36,12 +35,13 @@ export default function ProductListsPage() {
     return Array.from(map.values()).filter(pl => pl.customerOrders.length > 0)
   }, [orders, products])
 
+  const { sections } = useSections()
   const q = search.toLowerCase()
 
-  const grouped = PRODUCT_SECTIONS.map(section => ({
-    section,
+  const grouped = [...sections].sort((a, b) => a.order - b.order).map(s => ({
+    section: s,
     items: productLists
-      .filter(pl => pl.product.section === section)
+      .filter(pl => pl.product.section === s.name)
       .filter(pl => !q || pl.product.name.toLowerCase().includes(q) || pl.product.section.toLowerCase().includes(q))
       .sort((a, b) => a.product.name.localeCompare(b.product.name)),
   })).filter(g => g.items.length > 0)
@@ -78,13 +78,10 @@ export default function ProductListsPage() {
         </div>
       ) : (
         grouped.map(({ section, items }) => (
-          <div key={section}>
+          <div key={section.id}>
             <div className="flex items-center gap-2 mb-3">
-              <span className={cn(
-                'px-2.5 py-0.5 rounded-full text-xs font-semibold',
-                SECTION_COLORS[section]
-              )}>
-                {section}
+              <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold', section.color)}>
+                {section.name}
               </span>
               <span className="text-xs text-slate-400">
                 {items.length} {items.length === 1 ? 'prodotto' : 'prodotti'}

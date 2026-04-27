@@ -1,6 +1,7 @@
-import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, User } from './types'
-import { mockBakery, mockCustomers, mockDailyOrders, mockDivisors, mockProducts, mockRecurringOrders, mockUser, mockUsers } from './mockData'
+import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, SectionDef, User } from './types'
+import { mockBakery, mockCustomers, mockDailyOrders, mockDivisors, mockProducts, mockRecurringOrders, mockSections, mockUser, mockUsers } from './mockData'
 import { clone, dayOfWeek, getOrderStatus } from './utils'
+import { SECTION_COLOR_PALETTE } from './constants'
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true'
 
@@ -373,5 +374,62 @@ export const divisorsApi = {
       method: 'PATCH',
       body: JSON.stringify({ value }),
     })
+  },
+}
+
+// Sections API
+export const sectionsApi = {
+  async list(): Promise<SectionDef[]> {
+    if (USE_MOCK) return clone(mockSections).sort((a, b) => a.order - b.order)
+    return fetchApi<SectionDef[]>('/sections')
+  },
+
+  async create(name: string): Promise<SectionDef> {
+    if (USE_MOCK) {
+      const usedColors = mockSections.map(s => s.color)
+      const color = SECTION_COLOR_PALETTE.find(c => !usedColors.includes(c)) ?? SECTION_COLOR_PALETTE[mockSections.length % SECTION_COLOR_PALETTE.length]
+      const newSection: SectionDef = {
+        id: `s${Date.now()}`,
+        name,
+        color,
+        order: mockSections.length,
+      }
+      mockSections.push(newSection)
+      return clone(newSection)
+    }
+    return fetchApi<SectionDef>('/sections', { method: 'POST', body: JSON.stringify({ name }) })
+  },
+
+  async rename(id: string, name: string): Promise<SectionDef> {
+    if (USE_MOCK) {
+      const idx = mockSections.findIndex(s => s.id === id)
+      if (idx === -1) throw new Error('Section not found')
+      const oldName = mockSections[idx].name
+      mockSections[idx] = { ...mockSections[idx], name }
+      // Rename section on all products
+      mockProducts.forEach(p => { if (p.section === oldName) p.section = name })
+      return clone(mockSections[idx])
+    }
+    return fetchApi<SectionDef>(`/sections/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) })
+  },
+
+  async delete(id: string): Promise<void> {
+    if (USE_MOCK) {
+      const idx = mockSections.findIndex(s => s.id === id)
+      if (idx !== -1) mockSections.splice(idx, 1)
+      return
+    }
+    await fetchApi(`/sections/${id}`, { method: 'DELETE' })
+  },
+
+  async reorder(orderedIds: string[]): Promise<void> {
+    if (USE_MOCK) {
+      orderedIds.forEach((id, order) => {
+        const s = mockSections.find(s => s.id === id)
+        if (s) s.order = order
+      })
+      return
+    }
+    await fetchApi('/sections/reorder', { method: 'POST', body: JSON.stringify({ orderedIds }) })
   },
 }

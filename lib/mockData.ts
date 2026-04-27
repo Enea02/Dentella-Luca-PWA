@@ -1,4 +1,14 @@
-import type { Bakery, Customer, DailyOrder, Divisor, Product, RecurringOrder, User } from './types'
+import type { Bakery, Customer, DailyOrder, Divisor, Product, RecurringOrder, SectionDef, User } from './types'
+
+// Mock sections
+export const mockSections: SectionDef[] = [
+  { id: 's1', name: 'Dolci', color: 'bg-amber-100 text-amber-800', order: 0 },
+  { id: 's2', name: 'Pane comune', color: 'bg-orange-100 text-orange-800', order: 1 },
+  { id: 's3', name: 'Salati', color: 'bg-red-100 text-red-800', order: 2 },
+  { id: 's4', name: 'Pizze farcite', color: 'bg-rose-100 text-rose-800', order: 3 },
+  { id: 's5', name: 'Focacce farcite', color: 'bg-pink-100 text-pink-800', order: 4 },
+  { id: 's6', name: 'Specialità', color: 'bg-emerald-100 text-emerald-800', order: 5 },
+]
 
 // Mock bakery
 export const mockBakery: Bakery = {

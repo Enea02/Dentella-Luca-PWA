@@ -1,8 +1,8 @@
 'use client'
 
 import useSWR from 'swr'
-import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi } from '@/lib/api'
-import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, Role, User } from '@/lib/types'
+import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi, sectionsApi } from '@/lib/api'
+import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, Role, SectionDef, User } from '@/lib/types'
 
 // Products hook
 export function useProducts() {
@@ -182,6 +182,37 @@ export function useUsers() {
     },
     remove: async (id: string) => {
       await usersApi.delete(id)
+      await mutate()
+    },
+  }
+}
+
+// Sections hook
+export function useSections() {
+  const { data, isLoading, mutate } = useSWR<SectionDef[]>(
+    'sections',
+    () => sectionsApi.list(),
+    { revalidateOnFocus: false }
+  )
+
+  return {
+    sections: data ?? [],
+    isLoading,
+    mutate,
+    create: async (name: string) => {
+      await sectionsApi.create(name)
+      await mutate()
+    },
+    rename: async (id: string, name: string) => {
+      await sectionsApi.rename(id, name)
+      await mutate()
+    },
+    remove: async (id: string) => {
+      await sectionsApi.delete(id)
+      await mutate()
+    },
+    reorder: async (orderedIds: string[]) => {
+      await sectionsApi.reorder(orderedIds)
       await mutate()
     },
   }

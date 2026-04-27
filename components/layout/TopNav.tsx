@@ -35,15 +35,15 @@ export function TopNav() {
   const allLinks = role === 'owner' ? [...navLinks, ...ownerLinks] : navLinks
 
   const handlePrevDay = () => {
-    const date = new Date(selectedDate)
+    const date = new Date(selectedDate + 'T00:00:00')
     date.setDate(date.getDate() - 1)
-    setSelectedDate(date.toISOString().split('T')[0])
+    setSelectedDate(format(date, 'yyyy-MM-dd'))
   }
 
   const handleNextDay = () => {
-    const date = new Date(selectedDate)
+    const date = new Date(selectedDate + 'T00:00:00')
     date.setDate(date.getDate() + 1)
-    setSelectedDate(date.toISOString().split('T')[0])
+    setSelectedDate(format(date, 'yyyy-MM-dd'))
   }
 
   return (
@@ -105,20 +105,20 @@ export function TopNav() {
                 >
                   <Calendar className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">
-                    {format(new Date(selectedDate), 'EEE d MMM', { locale: it })}
+                    {format(new Date(selectedDate + 'T00:00:00'), 'EEE d MMM', { locale: it })}
                   </span>
                   <span className="sm:hidden">
-                    {format(new Date(selectedDate), 'd/M', { locale: it })}
+                    {format(new Date(selectedDate + 'T00:00:00'), 'd/M', { locale: it })}
                   </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
                 <CalendarComponent
                   mode="single"
-                  selected={new Date(selectedDate)}
+                  selected={new Date(selectedDate + 'T00:00:00')}
                   onSelect={(date) => {
                     if (date) {
-                      setSelectedDate(date.toISOString().split('T')[0])
+                      setSelectedDate(format(date, 'yyyy-MM-dd'))
                     }
                   }}
                   locale={it}

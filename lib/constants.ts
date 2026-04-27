@@ -1,4 +1,4 @@
-import type { ProductSection, Weekday } from "./types";
+import type { Weekday } from "./types";
 
 export const WEEKDAY_LABELS: Record<Weekday, string> = {
   1: "Lun",
@@ -20,16 +20,8 @@ export const WEEKDAY_FULL_LABELS: Record<Weekday, string> = {
   7: "Domenica",
 };
 
-export const PRODUCT_SECTIONS: ProductSection[] = [
-  "Dolci",
-  "Pane comune",
-  "Salati",
-  "Pizze farcite",
-  "Focacce farcite",
-  "Specialità",
-];
-
-export const SECTION_COLORS: Record<ProductSection, string> = {
+// Static colors for the default sections (kept for backward compat)
+export const SECTION_COLORS: Record<string, string> = {
   "Dolci": "bg-amber-100 text-amber-800",
   "Pane comune": "bg-orange-100 text-orange-800",
   "Salati": "bg-red-100 text-red-800",
@@ -37,6 +29,25 @@ export const SECTION_COLORS: Record<ProductSection, string> = {
   "Focacce farcite": "bg-pink-100 text-pink-800",
   "Specialità": "bg-emerald-100 text-emerald-800",
 };
+
+// Returns color for any section name, falling back to slate for unknowns
+export function getSectionColor(name: string): string {
+  return SECTION_COLORS[name] ?? "bg-slate-100 text-slate-700";
+}
+
+// Color palette cycled for new sections
+export const SECTION_COLOR_PALETTE: string[] = [
+  "bg-amber-100 text-amber-800",
+  "bg-orange-100 text-orange-800",
+  "bg-red-100 text-red-800",
+  "bg-rose-100 text-rose-800",
+  "bg-pink-100 text-pink-800",
+  "bg-emerald-100 text-emerald-800",
+  "bg-blue-100 text-blue-800",
+  "bg-violet-100 text-violet-800",
+  "bg-teal-100 text-teal-800",
+  "bg-cyan-100 text-cyan-800",
+];
 
 export const STATUS_COLORS = {
   pending: "bg-slate-50 text-slate-700",
