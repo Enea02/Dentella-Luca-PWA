@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ProductPicker } from './ProductPicker'
 
 interface DraftItem {
   localId: string
@@ -122,18 +123,14 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
           )}
 
           {/* Product selector */}
-          <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-            <SelectTrigger className="w-full rounded-2xl">
-              <SelectValue placeholder="Seleziona prodotto..." />
-            </SelectTrigger>
-            <SelectContent>
-              {sortedProducts.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name} ({p.section})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <ProductPicker
+            value={selectedProductId}
+            onChange={(id) => {
+              setSelectedProductId(id)
+              const product = products.find(p => p.id === id)
+              if (product) setUnit(product.unit === 'kg' ? 'kg' : 'pieces')
+            }}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             {/* Unit selector */}

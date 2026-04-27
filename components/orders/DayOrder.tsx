@@ -8,6 +8,7 @@ import { ProductLineStaff } from './ProductLineStaff'
 import { ProductLineOwner } from './ProductLineOwner'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ProductPicker } from './ProductPicker'
 import { getOrderStatus } from '@/lib/utils'
 import { STATUS_COLORS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
@@ -115,18 +116,10 @@ export function DayOrder({ order, onToggleItem, onAddItem }: DayOrderProps) {
             </button>
           ) : (
             <div className="grid gap-2">
-              <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-                <SelectTrigger className="w-full rounded-xl">
-                  <SelectValue placeholder="Seleziona prodotto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {sortedProducts.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} ({p.section})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ProductPicker
+                value={selectedProductId}
+                onChange={setSelectedProductId}
+              />
               <div className="grid grid-cols-2 gap-2">
                 <Select value={unit} onValueChange={(v) => setUnit(v as 'pieces' | 'kg')}>
                   <SelectTrigger className="w-full rounded-xl">
