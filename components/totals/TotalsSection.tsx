@@ -13,7 +13,6 @@ interface ProductTotal {
   product: Product
   totalPieces: number
   divisor: number
-  isDone: boolean
 }
 
 interface TotalsSectionProps {
@@ -42,9 +41,7 @@ export function TotalsSection({
       const totalQty = items.reduce((sum, item) => sum + item.quantity, 0)
       const totalPieces = toPieces(totalQty, product.unit, product.piecesPerKg)
       const divisor = divisors.find(d => d.productId === product.id)?.value || 1
-      const isDone = items.length > 0 && items.every(i => i.done)
-
-      return { product, totalPieces, divisor, isDone }
+      return { product, totalPieces, divisor }
     })
     .filter(pt => pt.totalPieces > 0)
 
@@ -73,13 +70,12 @@ export function TotalsSection({
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="mt-2 space-y-1">
-          {productTotals.map(({ product, totalPieces, divisor, isDone }) => (
+          {productTotals.map(({ product, totalPieces, divisor }) => (
             <TotalsRow
               key={product.id}
               product={product}
               totalPieces={totalPieces}
               divisor={divisor}
-              isDone={isDone}
               isOwner={role === 'owner'}
               onUpdateDivisor={(value) => onUpdateDivisor(product.id, value)}
             />
@@ -94,12 +90,11 @@ interface TotalsRowProps {
   product: Product
   totalPieces: number
   divisor: number
-  isDone: boolean
   isOwner: boolean
   onUpdateDivisor: (value: number) => void
 }
 
-function TotalsRow({ product, totalPieces, divisor, isDone, isOwner, onUpdateDivisor }: TotalsRowProps) {
+function TotalsRow({ product, totalPieces, divisor, isOwner, onUpdateDivisor }: TotalsRowProps) {
   const [localDivisor, setLocalDivisor] = useState(divisor.toString())
   const result = Math.ceil(totalPieces / divisor)
 
@@ -113,15 +108,12 @@ function TotalsRow({ product, totalPieces, divisor, isDone, isOwner, onUpdateDiv
   }
 
   return (
-    <div className={cn(
-      'flex items-center justify-between px-4 py-2 rounded-lg transition-colors',
-      isDone ? 'bg-emerald-50 ring-1 ring-emerald-200' : 'bg-slate-50'
-    )}>
-      <span className={cn('text-sm font-medium', isDone ? 'text-emerald-800' : 'text-slate-700')}>
+    <div className="flex items-center justify-between px-4 py-2 rounded-lg transition-colors bg-slate-50">
+      <span className="text-sm font-medium text-slate-700">
         {product.name}
       </span>
       <div className="flex items-center gap-3">
-        <span className={cn('text-sm', isDone ? 'text-emerald-700' : 'text-slate-600')}>{totalPieces} pz</span>
+        <span className="text-sm text-slate-600">{totalPieces} pz</span>
         
         {isOwner ? (
           <>
