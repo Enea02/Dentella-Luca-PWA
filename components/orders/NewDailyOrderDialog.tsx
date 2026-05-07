@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useCustomers, useProducts } from '@/hooks/useData'
 import type { ComputedDayOrder, OrderItem } from '@/lib/types'
 import {
@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ProductPicker } from './ProductPicker'
+import { toast } from 'sonner'
 
 interface DraftItem {
   localId: string
@@ -34,22 +35,46 @@ interface NewDailyOrderDialogProps {
 }
 
 export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: NewDailyOrderDialogProps) {
-  const { customers } = useCustomers()
+  const { customers, create: createCustomer } = useCustomers()
   const { products } = useProducts()
 
-  const [customerId, setCustomerId] = useState('')
+  const [inputValue, setInputValue] = useState('')
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState('')
   const [unit, setUnit] = useState<'pieces' | 'kg'>('pieces')
   const [qty, setQty] = useState(1)
   const [items, setItems] = useState<DraftItem[]>([])
   const [saving, setSaving] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const sortedProducts = [...products].sort((a, b) => a.name.localeCompare(b.name))
   const sortedCustomers = [...customers].sort((a, b) => a.name.localeCompare(b.name))
 
-  const alreadyHasOrder = customerId
-    ? existingOrders.some((o) => o.customerId === customerId)
+  const filteredCustomers = inputValue.trim()
+    ? sortedCustomers.filter((c) =>
+        c.name.toLowerCase().includes(inputValue.toLowerCase())
+      )
+    : sortedCustomers
+
+  const isNew = inputValue.trim().length > 0 && selectedCustomerId === null
+  const isExisting = selectedCustomerId !== null
+
+  const alreadyHasOrder = isExisting
+    ? existingOrders.some((o) => o.customerId === selectedCustomerId)
     : false
+
+  function handleInputChange(value: string) {
+    setInputValue(value)
+    setSelectedCustomerId(null)
+    setDropdownOpen(true)
+  }
+
+  function handleSelectCustomer(id: string, name: string) {
+    setSelectedCustomerId(id)
+    setInputValue(name)
+    setDropdownOpen(false)
+    inputRef.current?.blur()
+  }
 
   function addItem() {
     const product = products.find((p) => p.id === selectedProductId)
@@ -71,49 +96,90 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
     setItems((prev) => prev.filter((i) => i.localId !== localId))
   }
 
+  function handleClose() {
+    setInputValue('')
+    setSelectedCustomerId(null)
+    setDropdownOpen(false)
+    setItems([])
+    setQty(1)
+    onClose()
+  }
+
   async function handleSave() {
-    if (!customerId || items.length === 0) return
+    if (!inputValue.trim() || items.length === 0) return
     setSaving(true)
     try {
+      let targetCustomerId = selectedCustomerId
+      if (!targetCustomerId) {
+        const newCustomer = await createCustomer({ name: inputValue.trim(), type: 'single' })
+        targetCustomerId = newCustomer.id
+        toast.success(`Cliente "${inputValue.trim()}" creato come giornaliero`)
+      }
       await onSave(
-        customerId,
-        items.map(({ productId, quantity, unit }) => ({
-          productId,
-          quantity,
-          unit,
-          done: false,
-        }))
+        targetCustomerId,
+        items.map(({ productId, quantity, unit }) => ({ productId, quantity, unit, done: false }))
       )
-      setCustomerId('')
-      setItems([])
-      setQty(1)
-      onClose()
+      handleClose()
     } finally {
       setSaving(false)
     }
   }
 
+  const canSave = inputValue.trim().length > 0 && items.length > 0 && !alreadyHasOrder
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent aria-describedby={undefined} className="max-w-md rounded-3xl">
         <DialogHeader>
           <DialogTitle>Nuovo ordine giornaliero</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-3">
-          {/* Customer selector */}
-          <Select value={customerId} onValueChange={setCustomerId}>
-            <SelectTrigger className="w-full rounded-2xl">
-              <SelectValue placeholder="Seleziona cliente..." />
-            </SelectTrigger>
-            <SelectContent>
-              {sortedCustomers.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Customer autocomplete */}
+          <div className="relative">
+            <div className="relative flex items-center">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onFocus={() => setDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setDropdownOpen(false), 150)}
+                placeholder="Cerca o inserisci cliente..."
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-24 text-sm outline-none focus:border-slate-400"
+              />
+              {isExisting && (
+                <span className="absolute right-3 rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500">
+                  Esistente
+                </span>
+              )}
+              {isNew && (
+                <span className="absolute right-3 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                  Nuovo
+                </span>
+              )}
+            </div>
+
+            {dropdownOpen && filteredCustomers.length > 0 && (
+              <div className="absolute z-50 mt-1 w-full rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                <div className="max-h-48 overflow-y-auto py-1">
+                  {filteredCustomers.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onMouseDown={() => handleSelectCustomer(c.id, c.name)}
+                      className="w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 flex items-center justify-between"
+                    >
+                      <span>{c.name}</span>
+                      <span className="text-xs text-slate-400">
+                        {c.type === 'fixed' ? 'Fisso' : 'Giornaliero'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {alreadyHasOrder && (
             <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 leading-relaxed">
@@ -133,7 +199,6 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
           />
 
           <div className="grid grid-cols-2 gap-3">
-            {/* Unit selector */}
             <Select value={unit} onValueChange={(v) => setUnit(v as 'pieces' | 'kg')}>
               <SelectTrigger className="w-full rounded-2xl">
                 <SelectValue />
@@ -187,7 +252,7 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
           <button
             type="button"
             onClick={handleSave}
-            disabled={!customerId || items.length === 0 || saving || alreadyHasOrder}
+            disabled={!canSave || saving}
             className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
           >
             {saving ? 'Salvataggio...' : 'Salva ordine'}
