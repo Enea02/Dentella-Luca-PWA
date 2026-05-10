@@ -17,6 +17,17 @@ export interface SectionDef {
   order: number;
 }
 
+// Production group: a user-defined collection of sections rendered as one production table
+export interface ProductionGroup {
+  id: string;
+  name: string;
+  sectionIds: string[];
+  order: number;
+}
+
+// Section name that triggers the per-customer pizza variant input/display
+export const PIZZA_VARIANT_SECTION = "Pizze farcite";
+
 // Core entities
 export interface Product {
   id: string;
@@ -37,6 +48,7 @@ export interface OrderItem {
   quantity: number;
   unit: Unit;
   done: boolean;
+  variant?: string; // Free-text variant (used only for Pizze farcite items)
 }
 
 export interface RecurringOrder {

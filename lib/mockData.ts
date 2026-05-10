@@ -1,4 +1,4 @@
-import type { Bakery, Customer, DailyOrder, Divisor, Product, RecurringOrder, SectionDef, User } from './types'
+import type { Bakery, Customer, DailyOrder, Divisor, Product, ProductionGroup, RecurringOrder, SectionDef, User } from './types'
 
 // Mock sections
 export const mockSections: SectionDef[] = [
@@ -8,6 +8,13 @@ export const mockSections: SectionDef[] = [
   { id: 's4', name: 'Pizze farcite', color: 'bg-rose-100 text-rose-800', order: 3 },
   { id: 's5', name: 'Focacce farcite', color: 'bg-pink-100 text-pink-800', order: 4 },
   { id: 's6', name: 'Specialità', color: 'bg-emerald-100 text-emerald-800', order: 5 },
+]
+
+// Mock production groups (replicate the previous hardcoded grouping)
+export const mockProductionGroups: ProductionGroup[] = [
+  { id: 'pg1', name: 'Dolci', sectionIds: ['s1', 's6'], order: 0 },
+  { id: 'pg2', name: 'Pane', sectionIds: ['s2'], order: 1 },
+  { id: 'pg3', name: 'Salati', sectionIds: ['s3', 's4', 's5'], order: 2 },
 ]
 
 // Mock bakery
@@ -159,7 +166,7 @@ export const mockDailyOrders: DailyOrder[] = [
     date: new Date().toISOString().split('T')[0], // Today
     customerId: 'c6',
     items: [
-      { productId: 'p16', quantity: 3, unit: 'pieces', done: false },
+      { productId: 'p16', quantity: 3, unit: 'pieces', done: false, variant: 'extra prosciutto' },
       { productId: 'p20', quantity: 2, unit: 'pieces', done: false },
     ],
   },

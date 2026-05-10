@@ -1,41 +1,51 @@
 'use client'
 
-import { useMemo } from 'react'
-import { useOrders, useProducts } from '@/hooks/useData'
+import { useMemo, useState } from 'react'
+import { useOrders, useProducts, useProductionGroups, useSections } from '@/hooks/useData'
 import { useAppStore } from '@/lib/store'
+import { useAuth } from '@/hooks/useAuth'
 import { ProductionTable } from '@/components/production/ProductionTable'
 import type { ProductionSection } from '@/components/production/ProductionTable'
-import type { ProductSection } from '@/lib/types'
-import { Loader2 } from 'lucide-react'
-
-const DOLCI_SECTIONS: ProductSection[] = ['Dolci', 'Specialità']
-const PANE_SECTIONS: ProductSection[] = ['Pane comune']
-const SALATI_SECTIONS: ProductSection[] = ['Salati', 'Pizze farcite', 'Focacce farcite']
-
-function buildSections(products: ReturnType<typeof useProducts>['products'], sectionNames: ProductSection[]): ProductionSection[] {
-  return sectionNames
-    .map(name => {
-      const prods = products.filter(p => p.section === name)
-      if (prods.length === 0) return null
-      return {
-        id: name,
-        label: name,
-        products: prods.map(p => ({ id: p.id, name: p.name, unit: p.unit })),
-      }
-    })
-    .filter((s): s is ProductionSection => s !== null)
-}
+import { ProductionGroupsManager } from '@/components/production/ProductionGroupsManager'
+import { Button } from '@/components/ui/button'
+import { Loader2, Settings2 } from 'lucide-react'
 
 export default function ProductionPage() {
   const { selectedDate } = useAppStore()
+  const { role } = useAuth()
   const { orders, isLoading: ordersLoading, toggleItem } = useOrders(selectedDate)
   const { products, isLoading: productsLoading } = useProducts()
+  const { groups, isLoading: groupsLoading } = useProductionGroups()
+  const { sections, isLoading: sectionsLoading } = useSections()
 
-  const isLoading = ordersLoading || productsLoading
+  const [showManager, setShowManager] = useState(false)
 
-  const dolciSections = useMemo(() => buildSections(products, DOLCI_SECTIONS), [products])
-  const paneSections = useMemo(() => buildSections(products, PANE_SECTIONS), [products])
-  const salatiSections = useMemo(() => buildSections(products, SALATI_SECTIONS), [products])
+  const isLoading = ordersLoading || productsLoading || groupsLoading || sectionsLoading
+
+  const sectionsById = useMemo(
+    () => new Map(sections.map(s => [s.id, s])),
+    [sections]
+  )
+
+  const builtGroups = useMemo(() => {
+    return [...groups]
+      .sort((a, b) => a.order - b.order)
+      .map(group => {
+        const groupSections: ProductionSection[] = group.sectionIds
+          .map(sid => sectionsById.get(sid))
+          .filter((s): s is NonNullable<typeof s> => !!s)
+          .map(section => {
+            const prods = products.filter(p => p.section === section.name)
+            return {
+              id: section.id,
+              label: section.name,
+              products: prods.map(p => ({ id: p.id, name: p.name, unit: p.unit })),
+            }
+          })
+          .filter(s => s.products.length > 0)
+        return { id: group.id, name: group.name, sections: groupSections }
+      })
+  }, [groups, products, sectionsById])
 
   if (isLoading) {
     return (
@@ -45,38 +55,49 @@ export default function ProductionPage() {
     )
   }
 
-  if (orders.length === 0) {
-    return (
-      <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 text-center">
-        <p className="text-slate-500">Nessun ordine per questa data</p>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-semibold text-slate-900">Produzione</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold text-slate-900">Produzione</h1>
+        {role === 'owner' && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowManager(v => !v)}
+            className="rounded-xl"
+          >
+            <Settings2 className="h-4 w-4 mr-2" />
+            {showManager ? 'Chiudi' : 'Modifica gruppi'}
+          </Button>
+        )}
+      </div>
 
-      <ProductionTable
-        title="Dolci"
-        sections={dolciSections}
-        orders={orders}
-        onToggleCell={(customerId, productId, done) => toggleItem(customerId, productId, done)}
-      />
+      {showManager && role === 'owner' && (
+        <ProductionGroupsManager onClose={() => setShowManager(false)} />
+      )}
 
-      <ProductionTable
-        title="Pane"
-        sections={paneSections}
-        orders={orders}
-        onToggleCell={(customerId, productId, done) => toggleItem(customerId, productId, done)}
-      />
-
-      <ProductionTable
-        title="Salati"
-        sections={salatiSections}
-        orders={orders}
-        onToggleCell={(customerId, productId, done) => toggleItem(customerId, productId, done)}
-      />
+      {orders.length === 0 ? (
+        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 text-center">
+          <p className="text-slate-500">Nessun ordine per questa data</p>
+        </div>
+      ) : builtGroups.length === 0 ? (
+        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 text-center">
+          <p className="text-slate-500">
+            Nessun gruppo configurato.{' '}
+            {role === 'owner' && 'Usa "Modifica gruppi" per crearne uno.'}
+          </p>
+        </div>
+      ) : (
+        builtGroups.map(group => (
+          <ProductionTable
+            key={group.id}
+            title={group.name}
+            sections={group.sections}
+            orders={orders}
+            onToggleCell={(customerId, productId, done) => toggleItem(customerId, productId, done)}
+          />
+        ))
+      )}
     </div>
   )
 }

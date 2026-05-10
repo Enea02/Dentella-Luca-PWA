@@ -1,5 +1,5 @@
-import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, SectionDef, User } from './types'
-import { mockBakery, mockCustomers, mockDailyOrders, mockDivisors, mockProducts, mockRecurringOrders, mockSections, mockUser, mockUsers } from './mockData'
+import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, ProductionGroup, SectionDef, User } from './types'
+import { mockBakery, mockCustomers, mockDailyOrders, mockDivisors, mockProductionGroups, mockProducts, mockRecurringOrders, mockSections, mockUser, mockUsers } from './mockData'
 import { clone, dayOfWeek, getOrderStatus } from './utils'
 import { SECTION_COLOR_PALETTE } from './constants'
 
@@ -237,6 +237,39 @@ export const ordersApi = {
       body: JSON.stringify({ date, customerId, productId, done }),
     })
   },
+
+  async updateItem(
+    date: string,
+    customerId: string,
+    productId: string,
+    updates: Partial<OrderItem>
+  ): Promise<void> {
+    if (USE_MOCK) {
+      for (const recurring of mockRecurringOrders) {
+        if (recurring.customerId === customerId) {
+          const item = recurring.items.find(i => i.productId === productId)
+          if (item) {
+            Object.assign(item, updates)
+            return
+          }
+        }
+      }
+      for (const daily of mockDailyOrders) {
+        if (daily.date === date && daily.customerId === customerId) {
+          const item = daily.items.find(i => i.productId === productId)
+          if (item) {
+            Object.assign(item, updates)
+            return
+          }
+        }
+      }
+      return
+    }
+    await fetchApi(`/orders/items`, {
+      method: 'PATCH',
+      body: JSON.stringify({ date, customerId, productId, updates }),
+    })
+  },
 }
 
 export function getCustomerRecurringOrder(customerId: string): import('./types').RecurringOrder | null {
@@ -455,5 +488,66 @@ export const sectionsApi = {
       return
     }
     await fetchApi('/sections/reorder', { method: 'POST', body: JSON.stringify({ orderedIds }) })
+  },
+}
+
+// Production groups API
+export const productionGroupsApi = {
+  async list(): Promise<ProductionGroup[]> {
+    if (USE_MOCK) return clone(mockProductionGroups).sort((a, b) => a.order - b.order)
+    return fetchApi<ProductionGroup[]>('/production-groups')
+  },
+
+  async create(name: string, sectionIds: string[] = []): Promise<ProductionGroup> {
+    if (USE_MOCK) {
+      const newGroup: ProductionGroup = {
+        id: `pg${Date.now()}`,
+        name,
+        sectionIds,
+        order: mockProductionGroups.length,
+      }
+      mockProductionGroups.push(newGroup)
+      return clone(newGroup)
+    }
+    return fetchApi<ProductionGroup>('/production-groups', {
+      method: 'POST',
+      body: JSON.stringify({ name, sectionIds }),
+    })
+  },
+
+  async update(id: string, updates: Partial<Pick<ProductionGroup, 'name' | 'sectionIds'>>): Promise<ProductionGroup> {
+    if (USE_MOCK) {
+      const idx = mockProductionGroups.findIndex(g => g.id === id)
+      if (idx === -1) throw new Error('Production group not found')
+      mockProductionGroups[idx] = { ...mockProductionGroups[idx], ...updates }
+      return clone(mockProductionGroups[idx])
+    }
+    return fetchApi<ProductionGroup>(`/production-groups/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    })
+  },
+
+  async delete(id: string): Promise<void> {
+    if (USE_MOCK) {
+      const idx = mockProductionGroups.findIndex(g => g.id === id)
+      if (idx !== -1) mockProductionGroups.splice(idx, 1)
+      return
+    }
+    await fetchApi(`/production-groups/${id}`, { method: 'DELETE' })
+  },
+
+  async reorder(orderedIds: string[]): Promise<void> {
+    if (USE_MOCK) {
+      orderedIds.forEach((id, order) => {
+        const g = mockProductionGroups.find(g => g.id === id)
+        if (g) g.order = order
+      })
+      return
+    }
+    await fetchApi('/production-groups/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ orderedIds }),
+    })
   },
 }

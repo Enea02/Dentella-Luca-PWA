@@ -51,6 +51,15 @@ export function ProductLineStaff({ item, product, onToggle }: ProductLineStaffPr
       )}>
         {product?.section}
       </p>
+      {item.variant && (
+        <p className={cn(
+          'italic truncate',
+          workMode ? 'text-sm' : 'text-xs',
+          item.done ? 'text-emerald-600' : 'text-slate-600'
+        )}>
+          {item.variant}
+        </p>
+      )}
     </div>
   )
 

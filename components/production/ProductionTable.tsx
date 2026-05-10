@@ -142,6 +142,18 @@ export function ProductionTable({ title, sections, orders, onToggleCell }: Produ
                             )}>
                               {item.unit === 'kg' ? 'kg' : 'pz'}
                             </span>
+                            {item.variant && (
+                              <span
+                                title={item.variant}
+                                className={cn(
+                                  'mt-0.5 italic leading-tight text-center max-w-full break-words line-clamp-2',
+                                  workMode ? 'text-xs' : 'text-[10px]',
+                                  item.done ? 'text-emerald-600' : 'text-slate-500'
+                                )}
+                              >
+                                {item.variant}
+                              </span>
+                            )}
                           </button>
                         </td>
                       )

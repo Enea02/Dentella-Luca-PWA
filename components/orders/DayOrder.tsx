@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useProducts } from '@/hooks/useData'
 import type { ComputedDayOrder, OrderItem } from '@/lib/types'
+import { PIZZA_VARIANT_SECTION } from '@/lib/types'
 import { ProductLineStaff } from './ProductLineStaff'
 import { ProductLineOwner } from './ProductLineOwner'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -17,26 +18,33 @@ interface DayOrderProps {
   order: ComputedDayOrder | null
   onToggleItem: (productId: string, done: boolean) => void
   onAddItem?: (item: OrderItem) => Promise<void>
+  onUpdateItemVariant?: (productId: string, variant: string) => Promise<void>
 }
 
-export function DayOrder({ order, onToggleItem, onAddItem }: DayOrderProps) {
+export function DayOrder({ order, onToggleItem, onAddItem, onUpdateItemVariant }: DayOrderProps) {
   const { role } = useAuth()
   const { products } = useProducts()
   const [addingItem, setAddingItem] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState('')
   const [unit, setUnit] = useState<'pieces' | 'kg'>('pieces')
   const [qty, setQty] = useState(1)
+  const [variant, setVariant] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const sortedProducts = [...products].sort((a, b) => a.name.localeCompare(b.name))
+  const selectedProduct = products.find(p => p.id === selectedProductId)
+  const showVariantInput = selectedProduct?.section === PIZZA_VARIANT_SECTION
 
   async function handleAddItem() {
     if (!selectedProductId || qty <= 0 || !onAddItem) return
     setSaving(true)
     try {
-      await onAddItem({ productId: selectedProductId, quantity: qty, unit, done: false })
+      const item: OrderItem = { productId: selectedProductId, quantity: qty, unit, done: false }
+      const trimmedVariant = variant.trim()
+      if (showVariantInput && trimmedVariant) item.variant = trimmedVariant
+      await onAddItem(item)
       setSelectedProductId('')
       setQty(1)
+      setVariant('')
       setAddingItem(false)
     } finally {
       setSaving(false)
@@ -87,6 +95,11 @@ export function DayOrder({ order, onToggleItem, onAddItem }: DayOrderProps) {
                   item={item}
                   product={product}
                   onToggle={(done) => onToggleItem(item.productId, done)}
+                  onUpdateVariant={
+                    onUpdateItemVariant
+                      ? (v) => onUpdateItemVariant(item.productId, v)
+                      : undefined
+                  }
                 />
               )
             }
@@ -138,10 +151,22 @@ export function DayOrder({ order, onToggleItem, onAddItem }: DayOrderProps) {
                   className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                 />
               </div>
+              {showVariantInput && (
+                <input
+                  type="text"
+                  value={variant}
+                  onChange={(e) => setVariant(e.target.value)}
+                  placeholder="Variante (es. extra prosciutto)"
+                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                />
+              )}
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setAddingItem(false)}
+                  onClick={() => {
+                    setAddingItem(false)
+                    setVariant('')
+                  }}
                   className="flex-1 rounded-xl border border-slate-200 py-2 text-xs text-slate-600"
                 >
                   Annulla

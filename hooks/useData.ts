@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react'
 import useSWR from 'swr'
-import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi, sectionsApi, getOrdersForDateRange } from '@/lib/api'
-import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, Role, SectionDef, User } from '@/lib/types'
+import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi, sectionsApi, productionGroupsApi, getOrdersForDateRange } from '@/lib/api'
+import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, ProductionGroup, Role, SectionDef, User } from '@/lib/types'
 
 // Statistics types
 export interface CustomerStat {
@@ -224,6 +224,25 @@ export function useOrders(date: string) {
       await ordersApi.toggleItem(date, customerId, productId, done)
       await mutate()
     },
+    updateItem: async (customerId: string, productId: string, updates: Partial<OrderItem>) => {
+      // Optimistic update
+      mutate(
+        (current) =>
+          current?.map((order) =>
+            order.customerId === customerId
+              ? {
+                  ...order,
+                  items: order.items.map((item) =>
+                    item.productId === productId ? { ...item, ...updates } : item
+                  ),
+                }
+              : order
+          ),
+        false
+      )
+      await ordersApi.updateItem(date, customerId, productId, updates)
+      await mutate()
+    },
   }
 }
 
@@ -350,6 +369,37 @@ export function useSections() {
     },
     reorder: async (orderedIds: string[]) => {
       await sectionsApi.reorder(orderedIds)
+      await mutate()
+    },
+  }
+}
+
+// Production groups hook
+export function useProductionGroups() {
+  const { data, isLoading, mutate } = useSWR<ProductionGroup[]>(
+    'production-groups',
+    () => productionGroupsApi.list(),
+    { revalidateOnFocus: false }
+  )
+
+  return {
+    groups: data ?? [],
+    isLoading,
+    mutate,
+    create: async (name: string, sectionIds: string[] = []) => {
+      await productionGroupsApi.create(name, sectionIds)
+      await mutate()
+    },
+    update: async (id: string, updates: Partial<Pick<ProductionGroup, 'name' | 'sectionIds'>>) => {
+      await productionGroupsApi.update(id, updates)
+      await mutate()
+    },
+    remove: async (id: string) => {
+      await productionGroupsApi.delete(id)
+      await mutate()
+    },
+    reorder: async (orderedIds: string[]) => {
+      await productionGroupsApi.reorder(orderedIds)
       await mutate()
     },
   }
