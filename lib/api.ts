@@ -377,6 +377,30 @@ export const divisorsApi = {
   },
 }
 
+// Statistics API
+function datesInRange(from: string, to: string): string[] {
+  const dates: string[] = []
+  const cur = new Date(from + 'T00:00:00')
+  const end = new Date(to + 'T00:00:00')
+  while (cur <= end) {
+    const y = cur.getFullYear()
+    const m = String(cur.getMonth() + 1).padStart(2, '0')
+    const d = String(cur.getDate()).padStart(2, '0')
+    dates.push(`${y}-${m}-${d}`)
+    cur.setDate(cur.getDate() + 1)
+  }
+  return dates
+}
+
+export async function getOrdersForDateRange(
+  from: string,
+  to: string
+): Promise<{ date: string; orders: ComputedDayOrder[] }[]> {
+  const dates = datesInRange(from, to).slice(0, 90)
+  const results = await Promise.all(dates.map(d => ordersApi.getForDate(d)))
+  return dates.map((d, i) => ({ date: d, orders: results[i] }))
+}
+
 // Sections API
 export const sectionsApi = {
   async list(): Promise<SectionDef[]> {

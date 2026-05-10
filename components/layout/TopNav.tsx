@@ -24,6 +24,7 @@ const navLinks = [
 
 const ownerLinks = [
   { href: '/manage', label: 'Gestione' },
+  { href: '/statistics', label: 'Statistiche' },
 ]
 
 export function TopNav() {

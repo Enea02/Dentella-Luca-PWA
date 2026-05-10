@@ -1,8 +1,128 @@
 'use client'
 
+import { useMemo } from 'react'
 import useSWR from 'swr'
-import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi, sectionsApi } from '@/lib/api'
+import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi, sectionsApi, getOrdersForDateRange } from '@/lib/api'
 import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, Role, SectionDef, User } from '@/lib/types'
+
+// Statistics types
+export interface CustomerStat {
+  customerId: string
+  customerName: string
+  customerType: string
+  orderDays: number
+  totalQuantity: number
+  doneQuantity: number
+}
+
+export interface ProductStat {
+  productId: string
+  productName: string
+  section: string
+  unit: string
+  totalQuantity: number
+  doneQuantity: number
+}
+
+export interface CustomerProductStat {
+  customerId: string
+  customerName: string
+  productId: string
+  productName: string
+  unit: string
+  totalQuantity: number
+  doneQuantity: number
+}
+
+export interface Statistics {
+  activeDays: number
+  uniqueCustomers: number
+  totalQuantityOrdered: number
+  totalQuantityDone: number
+  perCustomer: CustomerStat[]
+  perProduct: ProductStat[]
+  perCustomerProduct: CustomerProductStat[]
+}
+
+function computeStats(
+  data: { date: string; orders: ComputedDayOrder[] }[],
+  products: Product[]
+): Statistics {
+  const productMap = new Map(products.map(p => [p.id, p]))
+  const customerMap = new Map<string, CustomerStat>()
+  const productStatMap = new Map<string, ProductStat>()
+  const cpMap = new Map<string, CustomerProductStat>()
+  let activeDays = 0
+
+  for (const { orders } of data) {
+    if (orders.length > 0) activeDays++
+    for (const order of orders) {
+      if (!customerMap.has(order.customerId)) {
+        customerMap.set(order.customerId, {
+          customerId: order.customerId,
+          customerName: order.customerName,
+          customerType: order.customerType,
+          orderDays: 0,
+          totalQuantity: 0,
+          doneQuantity: 0,
+        })
+      }
+      const cStat = customerMap.get(order.customerId)!
+      cStat.orderDays++
+
+      for (const item of order.items) {
+        cStat.totalQuantity += item.quantity
+        if (item.done) cStat.doneQuantity += item.quantity
+
+        const product = productMap.get(item.productId)
+        if (!productStatMap.has(item.productId)) {
+          productStatMap.set(item.productId, {
+            productId: item.productId,
+            productName: product?.name ?? item.productId,
+            section: product?.section ?? '',
+            unit: item.unit,
+            totalQuantity: 0,
+            doneQuantity: 0,
+          })
+        }
+        const pStat = productStatMap.get(item.productId)!
+        pStat.totalQuantity += item.quantity
+        if (item.done) pStat.doneQuantity += item.quantity
+
+        const cpKey = `${order.customerId}::${item.productId}`
+        if (!cpMap.has(cpKey)) {
+          cpMap.set(cpKey, {
+            customerId: order.customerId,
+            customerName: order.customerName,
+            productId: item.productId,
+            productName: product?.name ?? item.productId,
+            unit: item.unit,
+            totalQuantity: 0,
+            doneQuantity: 0,
+          })
+        }
+        const cpStat = cpMap.get(cpKey)!
+        cpStat.totalQuantity += item.quantity
+        if (item.done) cpStat.doneQuantity += item.quantity
+      }
+    }
+  }
+
+  const totalQuantityOrdered = [...customerMap.values()].reduce((s, c) => s + c.totalQuantity, 0)
+  const totalQuantityDone = [...customerMap.values()].reduce((s, c) => s + c.doneQuantity, 0)
+
+  return {
+    activeDays,
+    uniqueCustomers: customerMap.size,
+    totalQuantityOrdered,
+    totalQuantityDone,
+    perCustomer: [...customerMap.values()].sort((a, b) => b.totalQuantity - a.totalQuantity),
+    perProduct: [...productStatMap.values()].sort((a, b) => b.totalQuantity - a.totalQuantity),
+    perCustomerProduct: [...cpMap.values()].sort((a, b) =>
+      a.customerName.localeCompare(b.customerName) || b.totalQuantity - a.totalQuantity
+    ),
+  }
+}
 
 // Products hook
 export function useProducts() {
@@ -185,6 +305,23 @@ export function useUsers() {
       await mutate()
     },
   }
+}
+
+// Statistics hook
+export function useStatistics(from: string, to: string) {
+  const { data: rangeData, isLoading: rangeLoading } = useSWR<{ date: string; orders: ComputedDayOrder[] }[]>(
+    from && to ? ['statistics', from, to] : null,
+    () => getOrdersForDateRange(from, to),
+    { revalidateOnFocus: false }
+  )
+  const { products, isLoading: productsLoading } = useProducts()
+
+  const stats = useMemo(() => {
+    if (!rangeData || !products.length) return null
+    return computeStats(rangeData, products)
+  }, [rangeData, products])
+
+  return { stats, isLoading: rangeLoading || productsLoading }
 }
 
 // Sections hook
