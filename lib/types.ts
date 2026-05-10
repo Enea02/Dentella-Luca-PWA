@@ -23,6 +23,7 @@ export interface ProductionGroup {
   name: string;
   sectionIds: string[];
   order: number;
+  displayMode?: 'by-article' | 'by-section';
 }
 
 // Section name that triggers the per-customer pizza variant input/display

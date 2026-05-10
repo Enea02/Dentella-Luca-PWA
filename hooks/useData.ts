@@ -390,7 +390,7 @@ export function useProductionGroups() {
       await productionGroupsApi.create(name, sectionIds)
       await mutate()
     },
-    update: async (id: string, updates: Partial<Pick<ProductionGroup, 'name' | 'sectionIds'>>) => {
+    update: async (id: string, updates: Partial<Pick<ProductionGroup, 'name' | 'sectionIds' | 'displayMode'>>) => {
       await productionGroupsApi.update(id, updates)
       await mutate()
     },

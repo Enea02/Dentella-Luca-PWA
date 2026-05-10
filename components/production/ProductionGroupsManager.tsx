@@ -74,6 +74,15 @@ export function ProductionGroupsManager({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const handleSetDisplayMode = async (group: ProductionGroup, mode: 'by-article' | 'by-section') => {
+    if ((group.displayMode ?? 'by-article') === mode) return
+    try {
+      await update(group.id, { displayMode: mode })
+    } catch {
+      toast.error("Errore durante l'aggiornamento")
+    }
+  }
+
   const handleDelete = async () => {
     if (!deleteGroup) return
     try {
@@ -234,6 +243,26 @@ export function ProductionGroupsManager({ onClose }: { onClose: () => void }) {
                   </button>
                 )
               })}
+            </div>
+
+            {/* Display mode selector */}
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+              <span className="text-xs text-slate-400 shrink-0">Visualizzazione:</span>
+              {(['by-article', 'by-section'] as const).map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => handleSetDisplayMode(group, mode)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-xs font-medium transition-all',
+                    (group.displayMode ?? 'by-article') === mode
+                      ? 'bg-slate-800 text-white'
+                      : 'bg-slate-50 text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100'
+                  )}
+                >
+                  {mode === 'by-article' ? 'Per articolo' : 'Per macro sezione'}
+                </button>
+              ))}
             </div>
           </div>
         ))}

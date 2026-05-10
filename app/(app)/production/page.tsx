@@ -43,7 +43,7 @@ export default function ProductionPage() {
             }
           })
           .filter(s => s.products.length > 0)
-        return { id: group.id, name: group.name, sections: groupSections }
+        return { id: group.id, name: group.name, sections: groupSections, displayMode: group.displayMode ?? 'by-article' as const }
       })
   }, [groups, products, sectionsById])
 
@@ -93,6 +93,7 @@ export default function ProductionPage() {
             key={group.id}
             title={group.name}
             sections={group.sections}
+            displayMode={group.displayMode}
             orders={orders}
             onToggleCell={(customerId, productId, done) => toggleItem(customerId, productId, done)}
           />

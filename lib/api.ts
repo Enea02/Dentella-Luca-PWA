@@ -515,7 +515,7 @@ export const productionGroupsApi = {
     })
   },
 
-  async update(id: string, updates: Partial<Pick<ProductionGroup, 'name' | 'sectionIds'>>): Promise<ProductionGroup> {
+  async update(id: string, updates: Partial<Pick<ProductionGroup, 'name' | 'sectionIds' | 'displayMode'>>): Promise<ProductionGroup> {
     if (USE_MOCK) {
       const idx = mockProductionGroups.findIndex(g => g.id === id)
       if (idx === -1) throw new Error('Production group not found')

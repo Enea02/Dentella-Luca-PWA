@@ -17,9 +17,10 @@ interface ProductionTableProps {
   sections: ProductionSection[]
   orders: ComputedDayOrder[]
   onToggleCell: (customerId: string, productId: string, done: boolean) => void
+  displayMode?: 'by-article' | 'by-section'
 }
 
-export function ProductionTable({ title, sections, orders, onToggleCell }: ProductionTableProps) {
+export function ProductionTable({ title, sections, orders, onToggleCell, displayMode = 'by-article' }: ProductionTableProps) {
   const workMode = useAppStore(state => state.workMode)
   const allProductIds = sections.flatMap(s => s.products.map(p => p.id))
 
@@ -36,75 +37,45 @@ export function ProductionTable({ title, sections, orders, onToggleCell }: Produ
       </div>
 
       <ScrollArea className="w-full">
-        <table className="min-w-max w-full border-collapse text-left">
-          <thead>
-            {/* Row 1 – section group headers */}
-            <tr>
-              <th
-                rowSpan={2}
-                className="w-36 shrink-0 px-3 py-2 text-xs font-medium text-slate-500 bg-slate-50 border-b border-r border-slate-200 align-middle"
-              >
-                Cliente
-              </th>
-              {sections.map(section => (
-                <th
-                  key={section.id}
-                  colSpan={section.products.length}
-                  className="px-2 py-1.5 text-center text-xs font-bold text-slate-700 bg-slate-100 border-b border-r border-slate-200 last:border-r-0 tracking-wide"
-                >
-                  {section.label}
+        {displayMode === 'by-section' ? (
+          <table className="min-w-max w-full border-collapse text-left">
+            <thead>
+              <tr>
+                <th className="w-36 shrink-0 px-3 py-2 text-xs font-medium text-slate-500 bg-slate-50 border-b border-r border-slate-200 align-middle">
+                  Cliente
                 </th>
-              ))}
-            </tr>
-
-            {/* Row 2 – individual product names */}
-            <tr>
-              {sections.map(section =>
-                section.products.map((product, idx) => (
+                {sections.map(section => (
                   <th
-                    key={product.id}
-                    className={cn(
-                      'w-20 px-1 py-2 text-center font-normal text-slate-500 bg-slate-50 border-b border-slate-200',
-                      idx === section.products.length - 1 && 'border-r border-slate-200'
-                    )}
+                    key={section.id}
+                    className="px-2 py-1.5 text-center text-xs font-bold text-slate-700 bg-slate-100 border-b border-r border-slate-200 last:border-r-0 tracking-wide"
                   >
-                    <span className="block text-xs leading-tight whitespace-normal">
-                      {product.name}
-                    </span>
+                    {section.label}
                   </th>
-                ))
-              )}
-            </tr>
-          </thead>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {relevantOrders.map(order => {
+                const status = getOrderStatus(order.items)
+                return (
+                  <tr key={order.customerId} className="border-b border-slate-50 last:border-0">
+                    <td className={cn(
+                      'px-3 py-2 font-medium border-r border-slate-100 align-middle',
+                      workMode ? 'w-44 text-base' : 'w-36 text-sm',
+                      STATUS_COLORS[status]
+                    )}>
+                      <span className="block truncate">{order.customerName}</span>
+                    </td>
+                    {sections.map(section => {
+                      const sectionItems = section.products
+                        .map(product => ({ product, item: order.items.find(i => i.productId === product.id) }))
+                        .filter((x): x is { product: typeof x.product; item: NonNullable<typeof x.item> } => !!x.item)
 
-          <tbody>
-            {relevantOrders.map(order => {
-              const status = getOrderStatus(order.items)
-              return (
-                <tr key={order.customerId} className="border-b border-slate-50 last:border-0">
-                  {/* Customer name cell */}
-                  <td className={cn(
-                    'px-3 py-2 font-medium border-r border-slate-100 align-middle',
-                    workMode ? 'w-44 text-base' : 'w-36 text-sm',
-                    STATUS_COLORS[status]
-                  )}>
-                    <span className="block truncate">{order.customerName}</span>
-                  </td>
-
-                  {/* Product cells */}
-                  {sections.map(section =>
-                    section.products.map((product, idx) => {
-                      const item = order.items.find(i => i.productId === product.id)
-
-                      if (!item) {
+                      if (sectionItems.length === 0) {
                         return (
                           <td
-                            key={product.id}
-                            className={cn(
-                              'text-center text-slate-300 align-middle',
-                              workMode ? 'w-28 text-base' : 'w-20 text-sm',
-                              idx === section.products.length - 1 && 'border-r border-slate-100'
-                            )}
+                            key={section.id}
+                            className="text-center text-slate-300 align-middle border-r border-slate-100 last:border-r-0 px-2"
                           >
                             —
                           </td>
@@ -112,58 +83,171 @@ export function ProductionTable({ title, sections, orders, onToggleCell }: Produ
                       }
 
                       return (
-                        <td
-                          key={product.id}
-                          className={cn(
-                            'p-0 align-middle',
-                            workMode ? 'w-28' : 'w-20',
-                            idx === section.products.length - 1 && 'border-r border-slate-100'
-                          )}
-                        >
-                          <button
-                            onClick={() => onToggleCell(order.customerId, product.id, !item.done)}
-                            className={cn(
-                              'w-full h-full flex flex-col items-center justify-center gap-0.5 px-1 transition-colors',
-                              workMode ? 'min-h-[72px] py-3' : 'min-h-[44px] py-2',
-                              item.done ? 'bg-emerald-50' : 'hover:bg-slate-50'
-                            )}
-                          >
-                            <span className={cn(
-                              'font-semibold leading-none',
-                              workMode ? 'text-base' : 'text-sm',
-                              item.done ? 'text-emerald-700' : 'text-slate-800'
-                            )}>
-                              {item.quantity}
-                            </span>
-                            <span className={cn(
-                              'leading-none',
-                              workMode ? 'text-sm' : 'text-xs',
-                              item.done ? 'text-emerald-500' : 'text-slate-400'
-                            )}>
-                              {item.unit === 'kg' ? 'kg' : 'pz'}
-                            </span>
-                            {item.variant && (
-                              <span
-                                title={item.variant}
+                        <td key={section.id} className="p-0 align-middle border-r border-slate-100 last:border-r-0">
+                          <div className="divide-y divide-slate-50">
+                            {sectionItems.map(({ product, item }) => (
+                              <button
+                                key={product.id}
+                                onClick={() => onToggleCell(order.customerId, product.id, !item.done)}
                                 className={cn(
-                                  'mt-0.5 italic leading-tight text-center max-w-full break-words line-clamp-2',
-                                  workMode ? 'text-xs' : 'text-[10px]',
-                                  item.done ? 'text-emerald-600' : 'text-slate-500'
+                                  'w-full flex flex-col items-center px-2 transition-colors text-center',
+                                  workMode ? 'min-h-[48px] py-2 gap-0.5' : 'min-h-[36px] py-1.5 gap-0',
+                                  item.done ? 'bg-emerald-50' : 'hover:bg-slate-50'
                                 )}
                               >
-                                {item.variant}
-                              </span>
-                            )}
-                          </button>
+                                <span className={cn(
+                                  'font-semibold tabular-nums leading-none',
+                                  workMode ? 'text-base' : 'text-sm',
+                                  item.done ? 'text-emerald-700' : 'text-slate-800'
+                                )}>
+                                  {item.quantity} {item.unit === 'kg' ? 'kg' : 'pz'}
+                                </span>
+                                <span className={cn(
+                                  'leading-tight min-w-0 w-full text-center',
+                                  workMode ? 'text-sm' : 'text-xs',
+                                  item.done ? 'text-emerald-600' : 'text-slate-500'
+                                )}>
+                                  {product.name}{item.variant ? ` · ${item.variant}` : ''}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
                         </td>
                       )
-                    })
-                  )}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <table className="min-w-max w-full border-collapse text-left">
+            <thead>
+              {/* Row 1 – section group headers */}
+              <tr>
+                <th
+                  rowSpan={2}
+                  className="w-36 shrink-0 px-3 py-2 text-xs font-medium text-slate-500 bg-slate-50 border-b border-r border-slate-200 align-middle"
+                >
+                  Cliente
+                </th>
+                {sections.map(section => (
+                  <th
+                    key={section.id}
+                    colSpan={section.products.length}
+                    className="px-2 py-1.5 text-center text-xs font-bold text-slate-700 bg-slate-100 border-b border-r border-slate-200 last:border-r-0 tracking-wide"
+                  >
+                    {section.label}
+                  </th>
+                ))}
+              </tr>
+
+              {/* Row 2 – individual product names */}
+              <tr>
+                {sections.map(section =>
+                  section.products.map((product, idx) => (
+                    <th
+                      key={product.id}
+                      className={cn(
+                        'w-20 px-1 py-2 text-center font-normal text-slate-500 bg-slate-50 border-b border-slate-200',
+                        idx === section.products.length - 1 && 'border-r border-slate-200'
+                      )}
+                    >
+                      <span className="block text-xs leading-tight whitespace-normal">
+                        {product.name}
+                      </span>
+                    </th>
+                  ))
+                )}
+              </tr>
+            </thead>
+
+            <tbody>
+              {relevantOrders.map(order => {
+                const status = getOrderStatus(order.items)
+                return (
+                  <tr key={order.customerId} className="border-b border-slate-50 last:border-0">
+                    <td className={cn(
+                      'px-3 py-2 font-medium border-r border-slate-100 align-middle',
+                      workMode ? 'w-44 text-base' : 'w-36 text-sm',
+                      STATUS_COLORS[status]
+                    )}>
+                      <span className="block truncate">{order.customerName}</span>
+                    </td>
+
+                    {sections.map(section =>
+                      section.products.map((product, idx) => {
+                        const item = order.items.find(i => i.productId === product.id)
+
+                        if (!item) {
+                          return (
+                            <td
+                              key={product.id}
+                              className={cn(
+                                'text-center text-slate-300 align-middle',
+                                workMode ? 'w-28 text-base' : 'w-20 text-sm',
+                                idx === section.products.length - 1 && 'border-r border-slate-100'
+                              )}
+                            >
+                              —
+                            </td>
+                          )
+                        }
+
+                        return (
+                          <td
+                            key={product.id}
+                            className={cn(
+                              'p-0 align-middle',
+                              workMode ? 'w-28' : 'w-20',
+                              idx === section.products.length - 1 && 'border-r border-slate-100'
+                            )}
+                          >
+                            <button
+                              onClick={() => onToggleCell(order.customerId, product.id, !item.done)}
+                              className={cn(
+                                'w-full h-full flex flex-col items-center justify-center gap-0.5 px-1 transition-colors',
+                                workMode ? 'min-h-[72px] py-3' : 'min-h-[44px] py-2',
+                                item.done ? 'bg-emerald-50' : 'hover:bg-slate-50'
+                              )}
+                            >
+                              <span className={cn(
+                                'font-semibold leading-none',
+                                workMode ? 'text-base' : 'text-sm',
+                                item.done ? 'text-emerald-700' : 'text-slate-800'
+                              )}>
+                                {item.quantity}
+                              </span>
+                              <span className={cn(
+                                'leading-none',
+                                workMode ? 'text-sm' : 'text-xs',
+                                item.done ? 'text-emerald-500' : 'text-slate-400'
+                              )}>
+                                {item.unit === 'kg' ? 'kg' : 'pz'}
+                              </span>
+                              {item.variant && (
+                                <span
+                                  title={item.variant}
+                                  className={cn(
+                                    'mt-0.5 italic leading-tight text-center max-w-full break-words line-clamp-2',
+                                    workMode ? 'text-xs' : 'text-[10px]',
+                                    item.done ? 'text-emerald-600' : 'text-slate-500'
+                                  )}
+                                >
+                                  {item.variant}
+                                </span>
+                              )}
+                            </button>
+                          </td>
+                        )
+                      })
+                    )}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
     </div>
