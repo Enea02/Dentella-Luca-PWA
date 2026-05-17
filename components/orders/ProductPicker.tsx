@@ -77,7 +77,6 @@ export function ProductPicker({ value, onChange, placeholder = 'Seleziona prodot
       <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100">
         <Search className="h-4 w-4 text-slate-400 shrink-0" />
         <input
-          autoFocus
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}

@@ -7,8 +7,6 @@ import { cn, toPieces } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import type { Product, ProductSection, OrderItem, Divisor } from '@/lib/types'
-import { SECTION_COLORS } from '@/lib/constants'
-
 interface ProductTotal {
   product: Product
   totalPieces: number
@@ -17,21 +15,23 @@ interface ProductTotal {
 
 interface TotalsSectionProps {
   section: ProductSection
+  color: string
   products: Product[]
   orderItems: OrderItem[]
   divisors: Divisor[]
   onUpdateDivisor: (productId: string, value: number) => void
 }
 
-export function TotalsSection({ 
-  section, 
-  products, 
-  orderItems, 
+export function TotalsSection({
+  section,
+  color,
+  products,
+  orderItems,
   divisors,
-  onUpdateDivisor 
+  onUpdateDivisor
 }: TotalsSectionProps) {
   const { role } = useAuth()
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
 
   // Calculate totals for each product in this section
   const productTotals: ProductTotal[] = products
@@ -56,7 +56,7 @@ export function TotalsSection({
       <CollapsibleTrigger className="w-full">
         <div className={cn(
           'flex items-center justify-between px-4 py-3 rounded-xl transition-colors',
-          SECTION_COLORS[section]
+          color
         )}>
           <div className="flex items-center gap-2">
             <ChevronDown className={cn(

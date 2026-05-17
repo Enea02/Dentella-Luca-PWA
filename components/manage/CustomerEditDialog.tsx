@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useCustomers, useProducts } from '@/hooks/useData'
+import { useCustomers, useProducts, useSections } from '@/hooks/useData'
 import { getCustomerRecurringOrder, upsertRecurringOrder } from '@/lib/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import type { Customer, Weekday } from '@/lib/types'
 import { Loader2, X } from 'lucide-react'
@@ -41,6 +41,7 @@ interface CustomerEditDialogProps {
 export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDialogProps) {
   const { create, update } = useCustomers()
   const { products } = useProducts()
+  const { sections } = useSections()
 
   const [name, setName] = useState('')
   const [isFixed, setIsFixed] = useState(false)
@@ -54,7 +55,15 @@ export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDial
   const [isLoading, setIsLoading] = useState(false)
 
   const isNew = !customer
-  const sortedProducts = [...products].sort((a, b) => a.name.localeCompare(b.name))
+  const groupedProducts = [...sections]
+    .sort((a, b) => a.order - b.order)
+    .map(s => ({
+      section: s,
+      products: products
+        .filter(p => p.section === s.name)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .filter(g => g.products.length > 0)
 
   useEffect(() => {
     if (!open) return
@@ -261,10 +270,13 @@ export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDial
                         <SelectValue placeholder="Aggiungi prodotto..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {sortedProducts.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
+                        {groupedProducts.map(({ section, products: sp }) => (
+                          <SelectGroup key={section.id}>
+                            <SelectLabel className={cn('text-xs', section.color)}>{section.name}</SelectLabel>
+                            {sp.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                          </SelectGroup>
                         ))}
                       </SelectContent>
                     </Select>

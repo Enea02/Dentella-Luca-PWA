@@ -34,6 +34,7 @@ export default function TotalsPage() {
           <TotalsSection
             key={s.id}
             section={s.name}
+            color={s.color}
             products={products}
             orderItems={allItems}
             divisors={divisors}
