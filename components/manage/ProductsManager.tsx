@@ -174,13 +174,16 @@ export function ProductsManager() {
               )}
             >
               {/* Section header */}
-              <div className="flex items-center gap-2 mb-2 px-1">
+              <div className="flex items-center gap-1.5 md:gap-2 mb-2 px-1 min-w-0">
                 <GripVertical className="h-4 w-4 text-slate-300 cursor-grab active:cursor-grabbing shrink-0" />
-                <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold', section.color)}>
+                <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold truncate min-w-0', section.color)}>
                   {section.name}
                 </span>
-                <span className="text-xs text-slate-400 flex-1">
+                <span className="text-xs text-slate-400 flex-1 truncate hidden sm:inline">
                   {sectionProducts.length} {sectionProducts.length === 1 ? 'prodotto' : 'prodotti'}
+                </span>
+                <span className="text-xs text-slate-400 flex-1 sm:hidden text-right">
+                  {sectionProducts.length}
                 </span>
                 <Button
                   variant="ghost"
@@ -201,13 +204,13 @@ export function ProductsManager() {
               </div>
 
               {/* Products */}
-              <div className="space-y-1.5 pl-6">
+              <div className="space-y-1.5 pl-2 md:pl-6">
                 {sectionProducts.map(product => (
                   <div
                     key={product.id}
-                    className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-white ring-1 ring-slate-200"
+                    className="flex items-center justify-between gap-2 px-2 md:px-4 py-2 md:py-2.5 rounded-xl bg-white ring-1 ring-slate-200"
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
                       <span className="font-medium text-slate-900 truncate text-sm">
                         {product.name}
                       </span>
@@ -217,7 +220,7 @@ export function ProductsManager() {
                           : 'pz'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
                       {/* Move to section */}
                       <Popover>
                         <PopoverTrigger asChild>
