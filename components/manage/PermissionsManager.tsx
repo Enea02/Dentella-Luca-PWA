@@ -145,12 +145,12 @@ function RoleMatrix({ data, onChange }: { data: PermissionsData; onChange: () =>
 
   return (
     <div className="rounded-2xl border border-slate-200 overflow-hidden">
-      <table className="w-full text-sm">
+      <table className="w-full text-xs md:text-sm table-fixed md:table-auto">
         <thead className="bg-slate-50 border-b border-slate-200">
           <tr>
-            <th className="text-left px-4 py-2.5 font-medium text-slate-700">Permesso</th>
+            <th className="text-left px-2 md:px-4 py-2.5 font-medium text-slate-700">Permesso</th>
             {ROLE_ORDER.map((r) => (
-              <th key={r} className="px-3 py-2.5 font-medium text-slate-700 w-20 text-center">
+              <th key={r} className="px-1 md:px-3 py-2.5 font-medium text-slate-700 w-12 md:w-20 text-center">
                 {ROLE_LABEL[r]}
               </th>
             ))}
@@ -159,15 +159,15 @@ function RoleMatrix({ data, onChange }: { data: PermissionsData; onChange: () =>
         <tbody>
           {PERMISSION_KEYS.map((perm) => (
             <tr key={perm} className="border-b border-slate-100 last:border-0">
-              <td className="px-4 py-2.5 text-slate-700">
+              <td className="px-2 md:px-4 py-2.5 text-slate-700">
                 <span className="font-medium">{PERMISSION_LABEL[perm] ?? perm}</span>
-                <span className="ml-2 text-xs text-slate-400 font-mono">{perm}</span>
+                <span className="hidden md:inline ml-2 text-xs text-slate-400 font-mono">{perm}</span>
               </td>
               {ROLE_ORDER.map((role) => {
                 const eff = effective(role, perm)
                 const overridden = isOverridden(role, perm)
                 return (
-                  <td key={role} className="text-center px-3 py-2.5">
+                  <td key={role} className="text-center px-1 md:px-3 py-2.5">
                     <div className="inline-flex items-center gap-1.5">
                       <button
                         type="button"
@@ -294,15 +294,15 @@ function UserPermissionRows({
           ov === undefined ? 'default' : ov ? 'forced-on' : 'forced-off'
 
         return (
-          <div key={perm} className="flex items-center justify-between px-4 py-2">
-            <div className="text-sm">
+          <div key={perm} className="flex flex-col gap-2 px-3 md:px-4 py-2 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm min-w-0">
               <span className="text-slate-700">{PERMISSION_LABEL[perm] ?? perm}</span>
-              <span className="ml-2 text-xs text-slate-400 font-mono">{perm}</span>
+              <span className="hidden md:inline ml-2 text-xs text-slate-400 font-mono">{perm}</span>
               <span className={cn('ml-2 text-xs', eff ? 'text-emerald-600' : 'text-slate-400')}>
                 {eff ? '✓ permesso' : '✗ negato'}
               </span>
             </div>
-            <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
+            <div className="inline-flex self-end md:self-auto rounded-lg border border-slate-200 overflow-hidden shrink-0">
               <button
                 type="button"
                 onClick={() => setUser(perm, null)}

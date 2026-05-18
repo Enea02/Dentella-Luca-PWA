@@ -46,13 +46,13 @@ export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVa
 
   return (
     <div className={cn(
-      'px-4 py-3 rounded-xl transition-all',
+      'px-3 md:px-4 py-3 rounded-xl transition-all',
       'flex flex-col gap-2',
       item.done
         ? 'bg-emerald-50 ring-1 ring-emerald-200'
         : 'bg-white ring-1 ring-slate-200'
     )}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3 min-w-0">
         {/* Toggle checkbox */}
         <button
           onClick={() => onToggle(!item.done)}
@@ -88,7 +88,7 @@ export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVa
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
           onBlur={handleQuantityBlur}
-          className="w-16 h-8 text-center text-sm rounded-lg"
+          className="w-12 md:w-16 h-8 px-1 md:px-3 text-center text-sm rounded-lg shrink-0"
           min={0}
           step={item.unit === 'kg' ? 0.1 : 1}
         />
@@ -98,7 +98,7 @@ export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVa
           value={item.unit}
           onValueChange={(value) => onUpdate?.(item.quantity, value as 'pieces' | 'kg')}
         >
-          <SelectTrigger className="w-16 h-8 text-xs rounded-lg">
+          <SelectTrigger className="w-14 md:w-16 h-8 px-2 text-xs rounded-lg shrink-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

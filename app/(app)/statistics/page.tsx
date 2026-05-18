@@ -60,65 +60,111 @@ function Empty() {
 function CustomerTable({ rows }: { rows: CustomerStat[] }) {
   if (rows.length === 0) return <Empty />
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
-            <th className="pb-2 font-medium">Cliente</th>
-            <th className="pb-2 font-medium text-right">Giorni</th>
-            <th className="pb-2 font-medium text-right">Qtà ord.</th>
-            <th className="pb-2 font-medium text-right">Qtà evasa</th>
-            <th className="pb-2 font-medium text-right">%</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.customerId} className="border-b border-slate-50 hover:bg-slate-50">
-              <td className="py-2.5">
-                <span className="font-medium text-slate-900">{r.customerName}</span>
-                <span className="ml-2 text-xs text-slate-400">
-                  {r.customerType === 'fixed' ? 'Fisso' : 'Giorn.'}
-                </span>
-              </td>
-              <td className="py-2.5 text-right text-slate-600">{r.orderDays}</td>
-              <td className="py-2.5 text-right text-slate-600">{r.totalQuantity.toLocaleString('it')}</td>
-              <td className="py-2.5 text-right text-slate-600">{r.doneQuantity.toLocaleString('it')}</td>
-              <td className="py-2.5 text-right font-semibold text-slate-700">{pct(r.doneQuantity, r.totalQuantity)}</td>
+    <>
+      {/* Mobile: card list */}
+      <div className="md:hidden space-y-2">
+        {rows.map((r) => (
+          <div key={r.customerId} className="rounded-2xl border border-slate-200 p-3">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="min-w-0">
+                <p className="font-medium text-sm text-slate-900 truncate">{r.customerName}</p>
+                <p className="text-xs text-slate-400">
+                  {r.customerType === 'fixed' ? 'Fisso' : 'Giornaliero'} · {r.orderDays} giorni
+                </p>
+              </div>
+              <span className="text-sm font-semibold text-slate-700 shrink-0">{pct(r.doneQuantity, r.totalQuantity)}</span>
+            </div>
+            <div className="flex justify-between text-xs text-slate-500">
+              <span>Ord. <span className="text-slate-700 font-medium">{r.totalQuantity.toLocaleString('it')}</span></span>
+              <span>Evasa <span className="text-slate-700 font-medium">{r.doneQuantity.toLocaleString('it')}</span></span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+              <th className="pb-2 font-medium">Cliente</th>
+              <th className="pb-2 font-medium text-right">Giorni</th>
+              <th className="pb-2 font-medium text-right">Qtà ord.</th>
+              <th className="pb-2 font-medium text-right">Qtà evasa</th>
+              <th className="pb-2 font-medium text-right">%</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.customerId} className="border-b border-slate-50 hover:bg-slate-50">
+                <td className="py-2.5">
+                  <span className="font-medium text-slate-900">{r.customerName}</span>
+                  <span className="ml-2 text-xs text-slate-400">
+                    {r.customerType === 'fixed' ? 'Fisso' : 'Giorn.'}
+                  </span>
+                </td>
+                <td className="py-2.5 text-right text-slate-600">{r.orderDays}</td>
+                <td className="py-2.5 text-right text-slate-600">{r.totalQuantity.toLocaleString('it')}</td>
+                <td className="py-2.5 text-right text-slate-600">{r.doneQuantity.toLocaleString('it')}</td>
+                <td className="py-2.5 text-right font-semibold text-slate-700">{pct(r.doneQuantity, r.totalQuantity)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
 
 function ProductTable({ rows }: { rows: ProductStat[] }) {
   if (rows.length === 0) return <Empty />
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
-            <th className="pb-2 font-medium">Articolo</th>
-            <th className="pb-2 font-medium">Sezione</th>
-            <th className="pb-2 font-medium text-right">Qtà ord.</th>
-            <th className="pb-2 font-medium text-right">Qtà evasa</th>
-            <th className="pb-2 font-medium text-right">%</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.productId} className="border-b border-slate-50 hover:bg-slate-50">
-              <td className="py-2.5 font-medium text-slate-900">{r.productName}</td>
-              <td className="py-2.5 text-xs text-slate-500">{r.section}</td>
-              <td className="py-2.5 text-right text-slate-600">{formatQty(r.totalQuantity, r.unit)}</td>
-              <td className="py-2.5 text-right text-slate-600">{formatQty(r.doneQuantity, r.unit)}</td>
-              <td className="py-2.5 text-right font-semibold text-slate-700">{pct(r.doneQuantity, r.totalQuantity)}</td>
+    <>
+      {/* Mobile: card list */}
+      <div className="md:hidden space-y-2">
+        {rows.map((r) => (
+          <div key={r.productId} className="rounded-2xl border border-slate-200 p-3">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="min-w-0">
+                <p className="font-medium text-sm text-slate-900 truncate">{r.productName}</p>
+                <p className="text-xs text-slate-400">{r.section}</p>
+              </div>
+              <span className="text-sm font-semibold text-slate-700 shrink-0">{pct(r.doneQuantity, r.totalQuantity)}</span>
+            </div>
+            <div className="flex justify-between text-xs text-slate-500">
+              <span>Ord. <span className="text-slate-700 font-medium">{formatQty(r.totalQuantity, r.unit)}</span></span>
+              <span>Evasa <span className="text-slate-700 font-medium">{formatQty(r.doneQuantity, r.unit)}</span></span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+              <th className="pb-2 font-medium">Articolo</th>
+              <th className="pb-2 font-medium">Sezione</th>
+              <th className="pb-2 font-medium text-right">Qtà ord.</th>
+              <th className="pb-2 font-medium text-right">Qtà evasa</th>
+              <th className="pb-2 font-medium text-right">%</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.productId} className="border-b border-slate-50 hover:bg-slate-50">
+                <td className="py-2.5 font-medium text-slate-900">{r.productName}</td>
+                <td className="py-2.5 text-xs text-slate-500">{r.section}</td>
+                <td className="py-2.5 text-right text-slate-600">{formatQty(r.totalQuantity, r.unit)}</td>
+                <td className="py-2.5 text-right text-slate-600">{formatQty(r.doneQuantity, r.unit)}</td>
+                <td className="py-2.5 text-right font-semibold text-slate-700">{pct(r.doneQuantity, r.totalQuantity)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
 
@@ -134,37 +180,62 @@ function CustomerProductTable({ rows }: { rows: CustomerProductStat[] }) {
 
   if (grouped.length === 0) return <Empty />
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
-            <th className="pb-2 font-medium">Cliente</th>
-            <th className="pb-2 font-medium">Articolo</th>
-            <th className="pb-2 font-medium text-right">Qtà ord.</th>
-            <th className="pb-2 font-medium text-right">Qtà evasa</th>
-            <th className="pb-2 font-medium text-right">%</th>
-          </tr>
-        </thead>
-        <tbody>
-          {grouped.map((group) =>
-            group.items.map((r, idx) => (
-              <tr
-                key={`${r.customerId}-${r.productId}`}
-                className={`border-b border-slate-50 hover:bg-slate-50 ${idx === 0 ? 'border-t border-slate-100' : ''}`}
-              >
-                <td className="py-2.5 font-medium text-slate-900">
-                  {idx === 0 ? r.customerName : ''}
-                </td>
-                <td className="py-2.5 text-slate-600">{r.productName}</td>
-                <td className="py-2.5 text-right text-slate-600">{formatQty(r.totalQuantity, r.unit)}</td>
-                <td className="py-2.5 text-right text-slate-600">{formatQty(r.doneQuantity, r.unit)}</td>
-                <td className="py-2.5 text-right font-semibold text-slate-700">{pct(r.doneQuantity, r.totalQuantity)}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {/* Mobile: grouped cards */}
+      <div className="md:hidden space-y-3">
+        {grouped.map((group) => (
+          <div key={group.items[0].customerId} className="rounded-2xl border border-slate-200 p-3">
+            <p className="font-medium text-sm text-slate-900 mb-2">{group.customerName}</p>
+            <div className="space-y-1.5">
+              {group.items.map((r) => (
+                <div key={`${r.customerId}-${r.productId}`} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-slate-700 truncate flex-1">{r.productName}</span>
+                  <span className="text-slate-500 tabular-nums">
+                    {formatQty(r.doneQuantity, r.unit)}/{formatQty(r.totalQuantity, r.unit)}
+                  </span>
+                  <span className="font-semibold text-slate-700 tabular-nums w-10 text-right">
+                    {pct(r.doneQuantity, r.totalQuantity)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+              <th className="pb-2 font-medium">Cliente</th>
+              <th className="pb-2 font-medium">Articolo</th>
+              <th className="pb-2 font-medium text-right">Qtà ord.</th>
+              <th className="pb-2 font-medium text-right">Qtà evasa</th>
+              <th className="pb-2 font-medium text-right">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {grouped.map((group) =>
+              group.items.map((r, idx) => (
+                <tr
+                  key={`${r.customerId}-${r.productId}`}
+                  className={`border-b border-slate-50 hover:bg-slate-50 ${idx === 0 ? 'border-t border-slate-100' : ''}`}
+                >
+                  <td className="py-2.5 font-medium text-slate-900">
+                    {idx === 0 ? r.customerName : ''}
+                  </td>
+                  <td className="py-2.5 text-slate-600">{r.productName}</td>
+                  <td className="py-2.5 text-right text-slate-600">{formatQty(r.totalQuantity, r.unit)}</td>
+                  <td className="py-2.5 text-right text-slate-600">{formatQty(r.doneQuantity, r.unit)}</td>
+                  <td className="py-2.5 text-right font-semibold text-slate-700">{pct(r.doneQuantity, r.totalQuantity)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
 

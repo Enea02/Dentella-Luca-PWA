@@ -52,7 +52,11 @@ export function SectionDialog({ section, open, onClose }: SectionDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent aria-describedby={undefined} className="rounded-3xl max-w-sm">
+      <DialogContent
+        aria-describedby={undefined}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="rounded-3xl max-w-sm"
+      >
         <DialogHeader>
           <DialogTitle>{isNew ? 'Nuovo gruppo' : 'Rinomina gruppo'}</DialogTitle>
         </DialogHeader>
@@ -65,7 +69,6 @@ export function SectionDialog({ section, open, onClose }: SectionDialogProps) {
               onChange={(e) => setName(e.target.value)}
               placeholder="Es. Croissant, Pane speciale..."
               className="rounded-xl"
-              autoFocus
             />
           </div>
           <DialogFooter>

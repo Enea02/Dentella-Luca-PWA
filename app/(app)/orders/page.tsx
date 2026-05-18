@@ -32,13 +32,13 @@ export default function OrdersPage() {
   return (
     <div className="grid gap-4 md:grid-cols-[300px_1fr] lg:grid-cols-[350px_1fr]">
       {/* Customer list (left column) */}
-      <div>
+      <div className="min-w-0">
         <h1 className="text-lg font-semibold text-slate-900 mb-3">Clienti</h1>
         <CustomerList orders={orders} isLoading={isLoading} />
       </div>
 
       {/* Order details (right column) */}
-      <div>
+      <div className="min-w-0">
         <h2 className="text-lg font-semibold text-slate-900 mb-3">Ordine</h2>
         <DayOrder
           order={selectedOrder}

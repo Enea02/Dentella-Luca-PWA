@@ -130,14 +130,14 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                       <Input
                         value={bakeryName}
                         onChange={(e) => setBakeryName(e.target.value)}
-                        className="h-8 rounded-lg text-sm max-w-[180px]"
+                        className="h-10 md:h-8 rounded-lg text-sm max-w-[180px]"
                         autoFocus
                         onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
                       />
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 text-emerald-600 hover:text-emerald-700"
+                        className="h-10 w-10 md:h-8 md:w-8 text-emerald-600 hover:text-emerald-700"
                         onClick={handleSaveName}
                         disabled={savingName}
                       >
@@ -146,7 +146,7 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 text-slate-400"
+                        className="h-10 w-10 md:h-8 md:w-8 text-slate-400"
                         onClick={() => { setEditingName(false); setBakeryName(bakery?.name ?? '') }}
                       >
                         <X className="h-4 w-4" />
@@ -158,7 +158,7 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 text-slate-400 hover:text-slate-600"
+                        className="h-9 w-9 md:h-7 md:w-7 text-slate-400 hover:text-slate-600"
                         onClick={() => setEditingName(true)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -183,7 +183,7 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs text-slate-600 gap-1"
+                  className="h-9 md:h-7 text-xs text-slate-600 gap-1"
                   onClick={() => setAddingUser(true)}
                 >
                   <UserPlus className="h-3.5 w-3.5" />
@@ -211,7 +211,7 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                         onValueChange={(v) => updateUserRole(u.id, v as Role)}
                         disabled={isSelf}
                       >
-                        <SelectTrigger className={cn('h-7 w-24 text-xs rounded-lg border-0', ROLE_COLORS[u.role])}>
+                        <SelectTrigger className={cn('h-9 md:h-7 w-24 text-xs rounded-lg border-0', ROLE_COLORS[u.role])}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -224,7 +224,7 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-slate-300 hover:text-red-500 shrink-0"
+                        className="h-9 w-9 md:h-7 md:w-7 text-slate-300 hover:text-red-500 shrink-0"
                         onClick={() => setDeleteUserId(u.id)}
                         disabled={isSelf}
                       >
@@ -243,11 +243,11 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                         placeholder="email@esempio.it"
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
-                        className="h-7 flex-1 rounded-lg text-xs border-slate-200"
+                        className="h-10 md:h-7 flex-1 rounded-lg text-sm md:text-xs border-slate-200"
                         autoFocus
                       />
                       <Select value={newRole} onValueChange={(v) => setNewRole(v as Role)}>
-                        <SelectTrigger className="h-7 w-24 text-xs rounded-lg">
+                        <SelectTrigger className="h-10 md:h-7 w-24 text-xs rounded-lg">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -263,13 +263,13 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                         placeholder="Password (min 8 caratteri)"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="h-7 flex-1 rounded-lg text-xs border-slate-200"
+                        className="h-10 md:h-7 flex-1 rounded-lg text-sm md:text-xs border-slate-200"
                         onKeyDown={(e) => e.key === 'Enter' && handleAddUser()}
                       />
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 text-emerald-600 hover:text-emerald-700 shrink-0"
+                        className="h-10 w-10 md:h-7 md:w-7 text-emerald-600 hover:text-emerald-700 shrink-0"
                         onClick={handleAddUser}
                         disabled={savingUser || !newEmail.trim() || newPassword.length < 8}
                       >
@@ -278,7 +278,7 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-7 w-7 text-slate-400 shrink-0"
+                        className="h-10 w-10 md:h-7 md:w-7 text-slate-400 shrink-0"
                         onClick={() => { setAddingUser(false); setNewEmail(''); setNewPassword('') }}
                       >
                         <X className="h-3.5 w-3.5" />

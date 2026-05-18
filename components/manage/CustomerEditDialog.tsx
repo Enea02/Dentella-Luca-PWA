@@ -173,7 +173,11 @@ export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDial
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent aria-describedby={undefined} className="flex flex-col gap-0 p-0 rounded-3xl sm:max-w-md max-h-[85vh]">
+      <DialogContent
+        aria-describedby={undefined}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="flex flex-col gap-0 p-0 rounded-3xl sm:max-w-md max-h-[85vh]"
+      >
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
           <DialogTitle>{isNew ? 'Nuovo Cliente' : 'Modifica Cliente'}</DialogTitle>
         </DialogHeader>
@@ -188,7 +192,6 @@ export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDial
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nome del cliente"
                 className="rounded-xl"
-                autoFocus
               />
             </div>
 

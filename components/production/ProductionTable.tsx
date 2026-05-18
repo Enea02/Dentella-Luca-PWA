@@ -36,7 +36,70 @@ export function ProductionTable({ title, sections, orders, onToggleCell, display
         <h2 className="font-semibold text-slate-900">{title}</h2>
       </div>
 
-      <ScrollArea className="w-full">
+      {/* Mobile: card list (hidden on md+) */}
+      <div className="md:hidden divide-y divide-slate-100">
+        {relevantOrders.map(order => {
+          const status = getOrderStatus(order.items)
+          const itemsBySection = sections
+            .map(section => ({
+              section,
+              items: section.products
+                .map(product => ({ product, item: order.items.find(i => i.productId === product.id) }))
+                .filter((x): x is { product: typeof x.product; item: NonNullable<typeof x.item> } => !!x.item),
+            }))
+            .filter(s => s.items.length > 0)
+
+          return (
+            <div key={order.customerId} className="p-3 space-y-2">
+              <div className={cn(
+                'inline-flex rounded-lg px-2 py-1 text-sm font-semibold',
+                STATUS_COLORS[status]
+              )}>
+                {order.customerName}
+              </div>
+              <div className="space-y-2">
+                {itemsBySection.map(({ section, items }) => (
+                  <div key={section.id}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                      {section.label}
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {items.map(({ product, item }) => (
+                        <button
+                          key={product.id}
+                          onClick={() => onToggleCell(order.customerId, product.id, !item.done)}
+                          className={cn(
+                            'flex flex-col items-start gap-0.5 rounded-xl px-2.5 py-2 text-left transition-colors min-h-[52px]',
+                            item.done
+                              ? 'bg-emerald-50 ring-1 ring-emerald-200'
+                              : 'bg-slate-50 ring-1 ring-slate-200 active:bg-slate-100'
+                          )}
+                        >
+                          <span className={cn(
+                            'text-sm font-semibold tabular-nums leading-none',
+                            item.done ? 'text-emerald-700' : 'text-slate-800'
+                          )}>
+                            {item.quantity} {item.unit === 'kg' ? 'kg' : 'pz'}
+                          </span>
+                          <span className={cn(
+                            'text-xs leading-tight line-clamp-2',
+                            item.done ? 'text-emerald-600' : 'text-slate-500'
+                          )}>
+                            {product.name}{item.variant ? ` · ${item.variant}` : ''}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Desktop: original table (hidden on mobile) */}
+      <ScrollArea className="hidden md:block w-full">
         {displayMode === 'by-section' ? (
           <table className="min-w-max w-full border-collapse text-left">
             <thead>

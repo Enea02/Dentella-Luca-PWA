@@ -117,8 +117,8 @@ export function ProductsManager() {
   return (
     <div className="space-y-4">
       {/* Search and action buttons */}
-      <div className="flex gap-3">
-        <div className="relative flex-1">
+      <div className="flex gap-2 md:gap-3">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             type="text"
@@ -131,17 +131,21 @@ export function ProductsManager() {
         <Button
           variant="outline"
           onClick={() => setIsNewSectionOpen(true)}
-          className="rounded-xl border-dashed"
+          aria-label="Nuovo gruppo"
+          title="Nuovo gruppo"
+          className="rounded-xl border-dashed shrink-0 px-3 md:px-4"
         >
-          <FolderPlus className="h-4 w-4 mr-2" />
-          Nuovo gruppo
+          <FolderPlus className="h-4 w-4 md:mr-2" />
+          <span className="hidden md:inline">Nuovo gruppo</span>
         </Button>
         <Button
           onClick={() => setIsNewProductOpen(true)}
-          className="rounded-xl bg-slate-900 text-white hover:bg-slate-800"
+          aria-label="Nuovo articolo"
+          title="Nuovo articolo"
+          className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 shrink-0 px-3 md:px-4"
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Nuovo articolo
+          <Plus className="h-4 w-4 md:mr-2" />
+          <span className="hidden md:inline">Nuovo articolo</span>
         </Button>
       </div>
 

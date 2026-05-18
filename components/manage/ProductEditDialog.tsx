@@ -77,7 +77,11 @@ export function ProductEditDialog({ product, open, onClose }: ProductEditDialogP
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent aria-describedby={undefined} className="rounded-3xl">
+      <DialogContent
+        aria-describedby={undefined}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="rounded-3xl"
+      >
         <DialogHeader>
           <DialogTitle>
             {isNew ? 'Nuovo Prodotto' : 'Modifica Prodotto'}
@@ -93,7 +97,6 @@ export function ProductEditDialog({ product, open, onClose }: ProductEditDialogP
               onChange={(e) => setName(e.target.value)}
               placeholder="Nome del prodotto"
               className="rounded-xl"
-              autoFocus
             />
           </div>
 
