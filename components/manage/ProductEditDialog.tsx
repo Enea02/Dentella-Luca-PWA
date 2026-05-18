@@ -56,7 +56,7 @@ export function ProductEditDialog({ product, open, onClose }: ProductEditDialogP
       const productData = {
         name: name.trim(),
         section,
-        unit: isKg ? 'kg' : 'pieces' as const,
+        unit: (isKg ? 'kg' : 'pieces') as 'kg' | 'pieces',
         ...(isKg && piecesPerKg ? { piecesPerKg: parseInt(piecesPerKg, 10) } : {}),
       }
 

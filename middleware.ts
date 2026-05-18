@@ -1,42 +1,15 @@
+import NextAuth from 'next-auth'
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { authConfig } from './auth.config'
 
-// Routes that require authentication
-const protectedRoutes = ['/orders', '/totals', '/production', '/product-lists', '/manage']
-// Routes that should redirect to app if already logged in
-const authRoutes = ['/login']
+const { auth } = NextAuth(authConfig)
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // Check for auth cookie (in production, this would be a session cookie)
-  // For mock mode, we simulate always being logged in
-  const useMock = process.env.NEXT_PUBLIC_USE_MOCK === 'true'
-  const hasAuthCookie = request.cookies.has('auth-session') || useMock
-
-  // Redirect unauthenticated users from protected routes to login
-  if (protectedRoutes.some(route => pathname.startsWith(route))) {
-    if (!hasAuthCookie) {
-      const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
+export default auth((req) => {
+  // Root → /orders. Auth.js handles the rest (login redirect / protected routes).
+  if (req.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/orders', req.nextUrl))
   }
-
-  // Redirect authenticated users from auth routes to app
-  if (authRoutes.some(route => pathname.startsWith(route))) {
-    if (hasAuthCookie) {
-      return NextResponse.redirect(new URL('/orders', request.url))
-    }
-  }
-
-  // Redirect root to orders
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL('/orders', request.url))
-  }
-
-  return NextResponse.next()
-}
+})
 
 export const config = {
   matcher: [
@@ -47,5 +20,6 @@ export const config = {
     '/production/:path*',
     '/product-lists/:path*',
     '/manage/:path*',
+    '/statistics/:path*',
   ],
 }

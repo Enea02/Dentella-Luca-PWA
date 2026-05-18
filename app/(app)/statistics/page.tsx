@@ -3,21 +3,17 @@
 import { useState, useMemo } from 'react'
 import { format, subDays } from 'date-fns'
 import { it } from 'date-fns/locale'
-import { ShieldAlert, Loader2, Calendar, Lock } from 'lucide-react'
+import { ShieldAlert, Loader2, Calendar } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStatistics } from '@/hooks/useData'
 import type { CustomerStat, ProductStat, CustomerProductStat } from '@/hooks/useData'
+import { can } from '@/lib/auth/permissions'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 
 const TODAY = format(new Date(), 'yyyy-MM-dd')
-
-// Mock-only access password for the Statistics page.
-// TODO: replace with a real auth check when leaving mock mode.
-const STATS_MOCK_PASSWORD = '1234'
 
 type Preset = 'today' | 'week' | 'month' | 'custom'
 
@@ -172,69 +168,17 @@ function CustomerProductTable({ rows }: { rows: CustomerProductStat[] }) {
   )
 }
 
-// ── Password gate ────────────────────────────────────────────────────────────
-
-function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState(false)
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (password === STATS_MOCK_PASSWORD) {
-      onUnlock()
-    } else {
-      setError(true)
-    }
-  }
-
-  return (
-    <div className="max-w-sm mx-auto mt-12">
-      <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-4">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <div className="rounded-full bg-slate-100 p-3">
-            <Lock className="h-6 w-6 text-slate-500" />
-          </div>
-          <h1 className="text-lg font-semibold text-slate-900">Statistiche protette</h1>
-          <p className="text-sm text-slate-500">
-            Inserisci la password per accedere ai dati statistici.
-          </p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <Input
-            type="password"
-            autoFocus
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setError(false) }}
-            placeholder="Password"
-            className="rounded-xl"
-          />
-          {error && (
-            <p className="text-xs text-red-600 text-center">Password errata</p>
-          )}
-          <Button
-            type="submit"
-            className="w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800"
-          >
-            Accedi
-          </Button>
-        </form>
-      </div>
-    </div>
-  )
-}
-
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function StatisticsPage() {
-  const { role } = useAuth()
-  const [unlocked, setUnlocked] = useState(false)
+  const { user } = useAuth()
   const [preset, setPreset] = useState<Preset>('week')
   const [from, setFrom] = useState(presetRange('week').from)
   const [to, setTo] = useState(TODAY)
 
   const { stats, isLoading } = useStatistics(from, to)
 
-  if (role !== 'owner') {
+  if (!can(user, 'statistics:view')) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <ShieldAlert className="h-12 w-12 text-slate-400" />
@@ -244,10 +188,6 @@ export default function StatisticsPage() {
         </div>
       </div>
     )
-  }
-
-  if (!unlocked) {
-    return <PasswordGate onUnlock={() => setUnlocked(true)} />
   }
 
   function applyPreset(p: Preset) {

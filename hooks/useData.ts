@@ -310,8 +310,8 @@ export function useUsers() {
     users: data ?? [],
     isLoading,
     error,
-    create: async (email: string, role: Role) => {
-      const user = await usersApi.create(email, role)
+    create: async (email: string, role: Role, password: string) => {
+      const user = await usersApi.create(email, role, password)
       await mutate()
       return user
     },

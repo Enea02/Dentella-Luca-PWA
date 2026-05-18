@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { authApi } from '@/lib/api'
+import { useAuth, AuthProvider } from '@/hooks/useAuth'
 import { Loader2 } from 'lucide-react'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/orders'
+  const { login } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -25,8 +26,9 @@ function LoginForm() {
     setIsLoading(true)
 
     try {
-      await authApi.login(email, password)
+      await login(email, password)
       router.push(redirect)
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore di login')
     } finally {
@@ -79,12 +81,6 @@ function LoginForm() {
           'Accedi'
         )}
       </Button>
-
-      {process.env.NEXT_PUBLIC_USE_MOCK === 'true' && (
-        <p className="text-xs text-slate-500 text-center mt-2">
-          Modalità demo: usa qualsiasi email e password
-        </p>
-      )}
     </form>
   )
 }
@@ -100,9 +96,11 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Suspense>
-            <LoginForm />
-          </Suspense>
+          <AuthProvider>
+            <Suspense>
+              <LoginForm />
+            </Suspense>
+          </AuthProvider>
         </CardContent>
       </Card>
     </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { can } from '@/lib/auth/permissions'
 import { useProducts } from '@/hooks/useData'
 import type { ComputedDayOrder, OrderItem } from '@/lib/types'
 import { PIZZA_VARIANT_SECTION } from '@/lib/types'
@@ -22,7 +23,8 @@ interface DayOrderProps {
 }
 
 export function DayOrder({ order, onToggleItem, onAddItem, onUpdateItemVariant }: DayOrderProps) {
-  const { role } = useAuth()
+  const { user } = useAuth()
+  const canEdit = can(user, 'orders:edit')
   const { products } = useProducts()
   const [addingItem, setAddingItem] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState('')
@@ -88,7 +90,7 @@ export function DayOrder({ order, onToggleItem, onAddItem, onUpdateItemVariant }
           {order.items.map((item) => {
             const product = products.find(p => p.id === item.productId)
 
-            if (role === 'owner') {
+            if (canEdit) {
               return (
                 <ProductLineOwner
                   key={item.productId}
@@ -117,7 +119,7 @@ export function DayOrder({ order, onToggleItem, onAddItem, onUpdateItemVariant }
       </ScrollArea>
 
       {/* Add item – owner only */}
-      {role === 'owner' && onAddItem && (
+      {canEdit && onAddItem && (
         <div className="border-t border-slate-100 p-3">
           {!addingItem ? (
             <button

@@ -1,5 +1,5 @@
 // Role types
-export type Role = "owner" | "staff";
+export type Role = "admin" | "owner" | "staff";
 export type Unit = "pieces" | "kg";
 export type CustomerType = "fixed" | "single";
 export type CustomerStatus = "pending" | "partial" | "done";
@@ -101,6 +101,7 @@ export interface User {
   role: Role;
   bakeryId: string;
   bakeryName: string;
+  permissions?: Record<string, boolean>;
 }
 
 // API Response types

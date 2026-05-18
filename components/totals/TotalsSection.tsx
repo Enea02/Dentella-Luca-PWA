@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { can } from '@/lib/auth/permissions'
 import { cn, toPieces } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -30,7 +31,7 @@ export function TotalsSection({
   divisors,
   onUpdateDivisor
 }: TotalsSectionProps) {
-  const { role } = useAuth()
+  const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 
   // Calculate totals for each product in this section
@@ -76,7 +77,7 @@ export function TotalsSection({
               product={product}
               totalPieces={totalPieces}
               divisor={divisor}
-              isOwner={role === 'owner'}
+              isOwner={can(user, 'divisors:write')}
               onUpdateDivisor={(value) => onUpdateDivisor(product.id, value)}
             />
           ))}

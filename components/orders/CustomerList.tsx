@@ -7,6 +7,7 @@ import type { ComputedDayOrder, OrderItem } from '@/lib/types'
 import { STATUS_COLORS } from '@/lib/constants'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useAuth } from '@/hooks/useAuth'
+import { can } from '@/lib/auth/permissions'
 import { useOrders } from '@/hooks/useData'
 import { NewDailyOrderDialog } from './NewDailyOrderDialog'
 
@@ -17,7 +18,7 @@ interface CustomerListProps {
 
 export function CustomerList({ orders, isLoading }: CustomerListProps) {
   const { selectedCustomerId, setSelectedCustomerId, selectedDate, workMode } = useAppStore()
-  const { role } = useAuth()
+  const { user } = useAuth()
   const { createOrder } = useOrders(selectedDate)
   const [search, setSearch] = useState('')
   const [isNewOrderOpen, setIsNewOrderOpen] = useState(false)
@@ -54,7 +55,7 @@ export function CustomerList({ orders, isLoading }: CustomerListProps) {
             placeholder="Cerca cliente..."
             className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none"
           />
-          {role === 'owner' && (
+          {can(user, 'orders:edit') && (
             <button
               type="button"
               onClick={() => setIsNewOrderOpen(true)}

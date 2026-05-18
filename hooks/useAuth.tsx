@@ -1,9 +1,7 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import useSWR from 'swr'
-import { authApi } from '@/lib/api'
-import { useAppStore } from '@/lib/store'
+import { createContext, useCallback, useContext, type ReactNode } from 'react'
+import { signIn, signOut, useSession, SessionProvider } from 'next-auth/react'
 import type { Role, User } from '@/lib/types'
 
 interface AuthContextType {
@@ -17,66 +15,49 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [loginError, setLoginError] = useState<string | null>(null)
-  const demoRole = useAppStore(state => state.demoRole)
-
-  const { data: user, isLoading, mutate } = useSWR<User | null>(
-    'auth-user',
-    async () => {
-      try {
-        return await authApi.me()
-      } catch {
-        return null
-      }
-    },
-    {
-      revalidateOnFocus: false,
-      shouldRetryOnError: false,
-    }
-  )
+function AuthContextProvider({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession()
 
   const login = useCallback(async (email: string, password: string) => {
-    setLoginError(null)
-    try {
-      const loggedUser = await authApi.login(email, password)
-      await mutate(loggedUser, false)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Login failed'
-      setLoginError(message)
-      throw error
+    const res = await signIn('credentials', { email, password, redirect: false })
+    if (!res || res.error) {
+      throw new Error('Credenziali non valide')
     }
-  }, [mutate])
+  }, [])
 
   const logout = useCallback(async () => {
-    await authApi.logout()
-    await mutate(null, false)
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login'
-    }
-  }, [mutate])
+    await signOut({ callbackUrl: '/login' })
+  }, [])
 
-  // Effective role: demo override or actual user role
-  const role: Role = demoRole || user?.role || 'staff'
+  const sessionUser = session?.user
+  const user: User | null = sessionUser
+    ? {
+        id: sessionUser.id,
+        email: sessionUser.email ?? '',
+        role: sessionUser.role,
+        bakeryId: sessionUser.bakeryId ?? '',
+        bakeryName: sessionUser.bakeryName ?? '',
+        permissions: sessionUser.permissions,
+      }
+    : null
 
   const value: AuthContextType = {
-    user: user ?? null,
-    role,
-    isLoading,
+    user,
+    role: user?.role ?? 'staff',
+    isLoading: status === 'loading',
     isAuthenticated: !!user,
     login,
     logout,
   }
 
-  // Clear login error when user logs in successfully
-  useEffect(() => {
-    if (user) setLoginError(null)
-  }, [user])
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
 
+export function AuthProvider({ children }: { children: ReactNode }) {
   return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+    <SessionProvider>
+      <AuthContextProvider>{children}</AuthContextProvider>
+    </SessionProvider>
   )
 }
 

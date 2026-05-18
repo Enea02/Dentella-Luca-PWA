@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useOrders, useProducts, useProductionGroups, useSections } from '@/hooks/useData'
 import { useAppStore } from '@/lib/store'
 import { useAuth } from '@/hooks/useAuth'
+import { can } from '@/lib/auth/permissions'
 import { ProductionTable } from '@/components/production/ProductionTable'
 import type { ProductionSection } from '@/components/production/ProductionTable'
 import { ProductionGroupsManager } from '@/components/production/ProductionGroupsManager'
@@ -12,7 +13,8 @@ import { Loader2, Settings2 } from 'lucide-react'
 
 export default function ProductionPage() {
   const { selectedDate } = useAppStore()
-  const { role } = useAuth()
+  const { user } = useAuth()
+  const canEditGroups = can(user, 'production-groups:write')
   const { orders, isLoading: ordersLoading, toggleItem } = useOrders(selectedDate)
   const { products, isLoading: productsLoading } = useProducts()
   const { groups, isLoading: groupsLoading } = useProductionGroups()
@@ -59,7 +61,7 @@ export default function ProductionPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-lg font-semibold text-slate-900">Produzione</h1>
-        {role === 'owner' && (
+        {canEditGroups && (
           <Button
             variant="outline"
             size="sm"
@@ -72,7 +74,7 @@ export default function ProductionPage() {
         )}
       </div>
 
-      {showManager && role === 'owner' && (
+      {showManager && canEditGroups && (
         <ProductionGroupsManager onClose={() => setShowManager(false)} />
       )}
 
@@ -84,7 +86,7 @@ export default function ProductionPage() {
         <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 text-center">
           <p className="text-slate-500">
             Nessun gruppo configurato.{' '}
-            {role === 'owner' && 'Usa "Modifica gruppi" per crearne uno.'}
+            {canEditGroups && 'Usa "Modifica gruppi" per crearne uno.'}
           </p>
         </div>
       ) : (

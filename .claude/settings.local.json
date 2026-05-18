@@ -6,7 +6,12 @@
       "Bash(npx tsc *)",
       "Bash(pnpm run *)",
       "Bash(npx next *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(git log *)",
+      "Bash(npm audit *)",
+      "Bash(npx drizzle-kit *)",
+      "Bash(node -e \"console.log\\('Pizzería'.normalize\\('NFD'\\).replace\\(/[̀-ͯ]/g, ''\\).toLowerCase\\(\\).replace\\(/[^a-z0-9]+/g, '-'\\)\\)\")",
+      "Bash(npm run *)"
     ]
   }
 }

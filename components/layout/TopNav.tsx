@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { useAuth } from '@/hooks/useAuth'
 import { useAppStore } from '@/lib/store'
+import { can } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { RoleBadge } from './RoleBadge'
 import { BakeryDialog } from './BakeryDialog'
@@ -22,18 +23,21 @@ const navLinks = [
   { href: '/product-lists', label: 'Liste' },
 ]
 
-const ownerLinks = [
-  { href: '/manage', label: 'Gestione' },
-  { href: '/statistics', label: 'Statistiche' },
-]
-
 export function TopNav() {
   const pathname = usePathname()
-  const { role, logout, user } = useAuth()
+  const { logout, user } = useAuth()
   const { selectedDate, setSelectedDate, workMode, setWorkMode } = useAppStore()
   const [bakeryOpen, setBakeryOpen] = useState(false)
 
-  const allLinks = role === 'owner' ? [...navLinks, ...ownerLinks] : navLinks
+  const canManage =
+    can(user, 'customers:write') || can(user, 'products:write') || can(user, 'permissions:manage')
+  const canStats = can(user, 'statistics:view')
+
+  const allLinks = [
+    ...navLinks,
+    ...(canManage ? [{ href: '/manage', label: 'Gestione' }] : []),
+    ...(canStats ? [{ href: '/statistics', label: 'Statistiche' }] : []),
+  ]
 
   const handlePrevDay = () => {
     const date = new Date(selectedDate + 'T00:00:00')

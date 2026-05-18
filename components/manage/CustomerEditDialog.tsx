@@ -67,21 +67,24 @@ export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDial
 
   useEffect(() => {
     if (!open) return
+    let cancelled = false
     if (customer) {
       setName(customer.name)
       const fixed = customer.type === 'fixed'
       setIsFixed(fixed)
       if (fixed) {
-        const recurring = getCustomerRecurringOrder(customer.id)
-        setWeekdays(recurring?.weekdays ?? [])
-        setItems(
-          (recurring?.items ?? []).map((item) => ({
-            localId: `${item.productId}-${Math.random()}`,
-            productId: item.productId,
-            quantity: item.quantity,
-            unit: item.unit,
-          }))
-        )
+        getCustomerRecurringOrder(customer.id).then((recurring) => {
+          if (cancelled) return
+          setWeekdays(recurring?.weekdays ?? [])
+          setItems(
+            (recurring?.items ?? []).map((item) => ({
+              localId: `${item.productId}-${Math.random()}`,
+              productId: item.productId,
+              quantity: item.quantity,
+              unit: item.unit,
+            }))
+          )
+        })
       } else {
         setWeekdays([])
         setItems([])
@@ -94,6 +97,9 @@ export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDial
     }
     setAddProductId('')
     setAddQty(1)
+    return () => {
+      cancelled = true
+    }
   }, [customer, open])
 
   function toggleWeekday(day: Weekday) {

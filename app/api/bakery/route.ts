@@ -1,0 +1,31 @@
+import { NextResponse, type NextRequest } from 'next/server'
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
+import { db } from '@/lib/db/client'
+import { bakeries } from '@/lib/db/schema'
+import { withAuth, parseJson } from '@/lib/api/handler'
+
+export const GET = withAuth(async (_req, { auth }) => {
+  const [row] = await db
+    .select({ id: bakeries.id, name: bakeries.name })
+    .from(bakeries)
+    .where(eq(bakeries.id, auth.bakeryId))
+  if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  return NextResponse.json(row)
+})
+
+const UpdateSchema = z.object({ name: z.string().trim().min(1).max(120) })
+
+export const PATCH = withAuth(
+  async (req: NextRequest, { auth }) => {
+    const { name } = await parseJson(req, UpdateSchema)
+    const [updated] = await db
+      .update(bakeries)
+      .set({ name })
+      .where(eq(bakeries.id, auth.bakeryId))
+      .returning({ id: bakeries.id, name: bakeries.name })
+    if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(updated)
+  },
+  { require: 'bakery:edit' },
+)
