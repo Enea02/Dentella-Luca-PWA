@@ -113,8 +113,8 @@ function TotalsRow({ product, totalPieces, divisor, isOwner, onUpdateDivisor }: 
         {product.name}
       </span>
       <div className="flex items-center gap-3">
-        <span className="text-sm text-slate-600">{totalPieces} pz</span>
-        
+        <span className="text-sm text-slate-600 min-w-[4rem] text-right">{totalPieces} pz</span>
+
         {isOwner ? (
           <>
             <span className="text-slate-400">/</span>
@@ -123,25 +123,26 @@ function TotalsRow({ product, totalPieces, divisor, isOwner, onUpdateDivisor }: 
               value={localDivisor}
               onChange={(e) => setLocalDivisor(e.target.value)}
               onBlur={handleBlur}
-              className="w-14 h-7 text-center text-sm rounded-lg"
+              className="w-16 h-7 text-center text-sm rounded-lg"
               min={1}
             />
-          </>
-        ) : (
-          divisor > 1 && (
-            <>
-              <span className="text-slate-400">/ {divisor}</span>
-            </>
-          )
-        )}
-
-        {divisor > 1 && (
-          <>
-            <span className="text-slate-400">=</span>
-            <span className="font-semibold text-slate-900 min-w-[3rem] text-right">
+            <span className={cn("text-slate-400", divisor <= 1 && "invisible")}>=</span>
+            <span className={cn("font-semibold text-slate-900 min-w-[2rem] text-right", divisor <= 1 && "invisible")}>
               {result}
             </span>
           </>
+        ) : (
+          divisor > 1 ? (
+            <>
+              <span className="text-slate-400">/ {divisor}</span>
+              <span className="text-slate-400">=</span>
+              <span className="font-semibold text-slate-900 min-w-[2rem] text-right">
+                {result}
+              </span>
+            </>
+          ) : (
+            <span className="min-w-[7rem]" />
+          )
         )}
       </div>
     </div>
