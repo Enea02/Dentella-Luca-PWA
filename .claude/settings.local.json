@@ -11,7 +11,12 @@
       "Bash(npm audit *)",
       "Bash(npx drizzle-kit *)",
       "Bash(node -e \"console.log\\('Pizzería'.normalize\\('NFD'\\).replace\\(/[̀-ͯ]/g, ''\\).toLowerCase\\(\\).replace\\(/[^a-z0-9]+/g, '-'\\)\\)\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(npx -y vercel@latest whoami)",
+      "Bash(npx -y pnpm@10 exec vercel --version)",
+      "Bash(git -C /Users/eneafrontera/Documents/GitHub/Dentella-Luca-PWA branch -a)",
+      "Bash(git -C /Users/eneafrontera/Documents/GitHub/Dentella-Luca-PWA log --oneline -10 main)",
+      "Bash(git -C /Users/eneafrontera/Documents/GitHub/Dentella-Luca-PWA log --oneline -10 test)"
     ]
   }
 }

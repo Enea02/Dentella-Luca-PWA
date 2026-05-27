@@ -36,9 +36,10 @@ interface CustomerEditDialogProps {
   customer: Customer | null
   open: boolean
   onClose: () => void
+  copyFromCustomerId?: string | null
 }
 
-export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDialogProps) {
+export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId }: CustomerEditDialogProps) {
   const { create, update } = useCustomers()
   const { products } = useProducts()
   const { sections } = useSections()
@@ -91,16 +92,30 @@ export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDial
       }
     } else {
       setName('')
-      setIsFixed(false)
+      setIsFixed(copyFromCustomerId ? true : false)
       setWeekdays([])
       setItems([])
+      if (copyFromCustomerId) {
+        getCustomerRecurringOrder(copyFromCustomerId).then((recurring) => {
+          if (cancelled) return
+          setWeekdays(recurring?.weekdays ?? [])
+          setItems(
+            (recurring?.items ?? []).map((item) => ({
+              localId: `${item.productId}-${Math.random()}`,
+              productId: item.productId,
+              quantity: item.quantity,
+              unit: item.unit,
+            }))
+          )
+        })
+      }
     }
     setAddProductId('')
     setAddQty(1)
     return () => {
       cancelled = true
     }
-  }, [customer, open])
+  }, [customer, open, copyFromCustomerId])
 
   function toggleWeekday(day: Weekday) {
     setWeekdays((prev) =>
@@ -290,7 +305,7 @@ export function CustomerEditDialog({ customer, open, onClose }: CustomerEditDial
                       </SelectContent>
                     </Select>
                     <Select value={addUnit} onValueChange={(v) => setAddUnit(v as 'pieces' | 'kg')}>
-                      <SelectTrigger className="w-14 rounded-xl text-xs h-8">
+                      <SelectTrigger className="w-[4.5rem] rounded-xl text-xs h-8">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

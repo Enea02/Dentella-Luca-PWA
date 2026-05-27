@@ -39,8 +39,7 @@ export function TotalsSection({
     .filter(p => p.section === section)
     .map(product => {
       const items = orderItems.filter(item => item.productId === product.id)
-      const totalQty = items.reduce((sum, item) => sum + item.quantity, 0)
-      const totalPieces = toPieces(totalQty, product.unit, product.piecesPerKg)
+      const totalPieces = items.reduce((sum, item) => sum + toPieces(item.quantity, item.unit, product.piecesPerKg), 0)
       const divisor = divisors.find(d => d.productId === product.id)?.value || 1
       return { product, totalPieces, divisor }
     })

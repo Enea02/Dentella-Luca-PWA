@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { cn, toPieces } from '@/lib/utils'
 import { SECTION_COLORS } from '@/lib/constants'
 import type { Product, ComputedDayOrder } from '@/lib/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -17,8 +17,7 @@ interface ProductListCardProps {
 }
 
 export function ProductListCard({ product, customerOrders }: ProductListCardProps) {
-  const unitLabel = product.unit === 'kg' ? 'kg' : 'pz'
-  const totalQty = customerOrders.reduce((sum, co) => sum + co.quantity, 0)
+  const totalQty = customerOrders.reduce((sum, co) => sum + toPieces(co.quantity, co.unit, product.piecesPerKg), 0)
 
   return (
     <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden flex flex-col">
@@ -36,7 +35,7 @@ export function ProductListCard({ product, customerOrders }: ProductListCardProp
         <div className="flex items-center justify-between mt-1 text-sm">
           <span className="text-slate-500">{customerOrders.length} clienti</span>
           <span className="font-medium text-slate-700">
-            Tot: {totalQty} {unitLabel}
+            Tot: {totalQty} pz
           </span>
         </div>
       </div>

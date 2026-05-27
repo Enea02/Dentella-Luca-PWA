@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Vercel: Deploy Preview",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["deploy:preview"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "detail": "Build & deploy current branch to a Vercel Preview URL"
+    },
+    {
+      "label": "Vercel: Deploy Production",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["deploy:prod"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "detail": "Build & deploy to Vercel Production (live URL)"
+    },
+    {
+      "label": "Vercel: Pull env vars (.env.local)",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["vercel:env:pull"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": [],
+      "detail": "Sync env vars from Vercel project into local .env.local"
+    },
+    {
+      "label": "Vercel: Tail logs",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["vercel:logs"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "problemMatcher": [],
+      "detail": "Stream runtime logs from the latest deployment"
+    }
+  ]
+}

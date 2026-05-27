@@ -5,7 +5,7 @@ import { useCustomers } from '@/hooks/useData'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Search, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CustomerEditDialog } from './CustomerEditDialog'
 import type { Customer } from '@/lib/types'
@@ -27,6 +27,7 @@ export function CustomersManager() {
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null)
   const [isNewOpen, setIsNewOpen] = useState(false)
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null)
+  const [copyFromCustomerId, setCopyFromCustomerId] = useState<string | null>(null)
 
   const filteredCustomers = customers
     .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
@@ -86,6 +87,20 @@ export function CustomersManager() {
                 </span>
               </div>
               <div className="flex items-center gap-1">
+                {customer.type === 'fixed' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-slate-400 hover:text-blue-600"
+                    onClick={() => {
+                      setCopyFromCustomerId(customer.id)
+                      setIsNewOpen(true)
+                    }}
+                    title="Duplica ordine fisso"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -120,7 +135,9 @@ export function CustomersManager() {
         onClose={() => {
           setEditCustomer(null)
           setIsNewOpen(false)
+          setCopyFromCustomerId(null)
         }}
+        copyFromCustomerId={copyFromCustomerId}
       />
 
       <AlertDialog open={!!deleteCustomer} onOpenChange={() => setDeleteCustomer(null)}>

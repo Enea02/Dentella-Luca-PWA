@@ -14,7 +14,11 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "db:add-admin-role": "tsx scripts/migrate-add-admin-role.ts",
-    "bakery:create": "tsx scripts/create-bakery.ts"
+    "bakery:create": "tsx scripts/create-bakery.ts",
+    "deploy:preview": "vercel deploy",
+    "deploy:prod": "vercel deploy --prod",
+    "vercel:env:pull": "vercel env pull .env.local",
+    "vercel:logs": "vercel logs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
@@ -86,6 +90,7 @@
     "tailwindcss": "^4.2.0",
     "tsx": "^4.22.1",
     "tw-animate-css": "1.3.3",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "vercel": "^54.4.1"
   }
 }
