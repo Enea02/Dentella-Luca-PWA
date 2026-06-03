@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db/client'
 import { bakeries, users } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 const UpdateSchema = z.object({
   role: z.enum(['admin', 'owner', 'staff']).optional(),
@@ -37,6 +38,7 @@ export const PATCH = withAuth<{ id: string }>(
       .select({ name: bakeries.name })
       .from(bakeries)
       .where(eq(bakeries.id, auth.bakeryId))
+    await notify(auth.bakeryId, { type: 'users.updated' })
     return NextResponse.json({ ...updated, bakeryName })
   },
   { require: 'users:manage' },
@@ -53,6 +55,7 @@ export const DELETE = withAuth<{ id: string }>(
       .where(and(eq(users.id, id), eq(users.bakeryId, auth.bakeryId)))
       .returning({ id: users.id })
     if (deleted.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await notify(auth.bakeryId, { type: 'users.updated' })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'users:manage' },

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { rolePermissionOverrides } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 import { PERMISSION_KEYS } from '@/lib/auth/permissions'
 import { wouldLockOut } from '@/lib/auth/lockout'
 
@@ -58,6 +59,7 @@ export const PUT = withAuth(
         })
     }
 
+    await notify(auth.bakeryId, { type: 'permissions.updated' })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'permissions:manage' },

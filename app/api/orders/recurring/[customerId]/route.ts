@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { customers, recurringOrderItems, recurringOrders } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 export const GET = withAuth<{ customerId: string }>(async (_req, { params, auth }) => {
   const { customerId } = await params
@@ -102,6 +103,7 @@ export const PUT = withAuth<{ customerId: string }>(
       }
     })
 
+    await notify(auth.bakeryId, { type: 'orders.updated' })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'customers:write' },

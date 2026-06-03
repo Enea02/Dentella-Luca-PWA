@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import useSWR from 'swr'
-import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi, sectionsApi, productionGroupsApi, getOrdersForDateRange } from '@/lib/api'
+import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi, sectionsApi, productionGroupsApi, getOrdersForRange } from '@/lib/api'
 import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, ProductionGroup, Role, SectionDef, User } from '@/lib/types'
 
 // Statistics types
@@ -129,7 +129,7 @@ export function useProducts() {
   const { data, error, isLoading, mutate } = useSWR<Product[]>(
     'products',
     () => productsApi.list(),
-    { revalidateOnFocus: false }
+    { dedupingInterval: 30_000 }
   )
 
   return {
@@ -159,7 +159,7 @@ export function useCustomers() {
   const { data, error, isLoading, mutate } = useSWR<Customer[]>(
     'customers',
     () => customersApi.list(),
-    { revalidateOnFocus: false }
+    { dedupingInterval: 30_000 }
   )
 
   return {
@@ -189,7 +189,7 @@ export function useOrders(date: string) {
   const { data, error, isLoading, mutate } = useSWR<ComputedDayOrder[]>(
     date ? ['orders', date] : null,
     () => ordersApi.getForDate(date),
-    { revalidateOnFocus: false }
+    { dedupingInterval: 5_000, refreshInterval: 30_000, keepPreviousData: true }
   )
 
   return {
@@ -251,7 +251,7 @@ export function useDivisors() {
   const { data, error, isLoading, mutate } = useSWR<Divisor[]>(
     'divisors',
     () => divisorsApi.list(),
-    { revalidateOnFocus: false }
+    { dedupingInterval: 30_000 }
   )
 
   return {
@@ -284,7 +284,7 @@ export function useBakery() {
   const { data, error, isLoading, mutate } = useSWR<Bakery>(
     'bakery',
     () => bakeryApi.get(),
-    { revalidateOnFocus: false }
+    { dedupingInterval: 60_000 }
   )
 
   return {
@@ -303,7 +303,7 @@ export function useUsers() {
   const { data, error, isLoading, mutate } = useSWR<User[]>(
     'users',
     () => usersApi.list(),
-    { revalidateOnFocus: false }
+    { dedupingInterval: 30_000 }
   )
 
   return {
@@ -330,8 +330,8 @@ export function useUsers() {
 export function useStatistics(from: string, to: string) {
   const { data: rangeData, isLoading: rangeLoading } = useSWR<{ date: string; orders: ComputedDayOrder[] }[]>(
     from && to ? ['statistics', from, to] : null,
-    () => getOrdersForDateRange(from, to),
-    { revalidateOnFocus: false }
+    () => getOrdersForRange(from, to),
+    { dedupingInterval: 60_000 }
   )
   const { products, isLoading: productsLoading } = useProducts()
 
@@ -348,7 +348,7 @@ export function useSections() {
   const { data, isLoading, mutate } = useSWR<SectionDef[]>(
     'sections',
     () => sectionsApi.list(),
-    { revalidateOnFocus: false }
+    { dedupingInterval: 30_000 }
   )
 
   return {
@@ -379,7 +379,7 @@ export function useProductionGroups() {
   const { data, isLoading, mutate } = useSWR<ProductionGroup[]>(
     'production-groups',
     () => productionGroupsApi.list(),
-    { revalidateOnFocus: false }
+    { dedupingInterval: 30_000 }
   )
 
   return {

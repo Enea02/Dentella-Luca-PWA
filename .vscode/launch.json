@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Next.js: server-side",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Next.js: server-side (webpack, breakpoint affidabili)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev -- --webpack",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Next.js: client-side (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Next.js: full stack",
+      "configurations": ["Next.js: server-side", "Next.js: client-side (Chrome)"],
+      "stopAll": true
+    }
+  ]
+}

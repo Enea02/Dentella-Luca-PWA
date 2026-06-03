@@ -3,7 +3,8 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { bakeries } from '@/lib/db/schema'
-import { withAuth, parseJson } from '@/lib/api/handler'
+import { withAuth, parseJson, jsonWithCache } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 export const GET = withAuth(async (_req, { auth }) => {
   const [row] = await db
@@ -11,7 +12,7 @@ export const GET = withAuth(async (_req, { auth }) => {
     .from(bakeries)
     .where(eq(bakeries.id, auth.bakeryId))
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(row)
+  return jsonWithCache(row, 300)
 })
 
 const UpdateSchema = z.object({ name: z.string().trim().min(1).max(120) })
@@ -25,6 +26,7 @@ export const PATCH = withAuth(
       .where(eq(bakeries.id, auth.bakeryId))
       .returning({ id: bakeries.id, name: bakeries.name })
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await notify(auth.bakeryId, { type: 'bakery.updated' })
     return NextResponse.json(updated)
   },
   { require: 'bakery:edit' },

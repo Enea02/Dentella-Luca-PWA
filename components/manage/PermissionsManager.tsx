@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, RotateCcw, ChevronDown, X, Check, Minus } from 'lucide-react'
+import { Loader2, RotateCcw, ChevronDown, X, Check, Minus, KeyRound } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useUsers } from '@/hooks/useData'
-import { PERMISSIONS, PERMISSION_KEYS, type PermissionKey } from '@/lib/auth/permissions'
+import { useAuth } from '@/hooks/useAuth'
+import { can, PERMISSION_KEYS, type PermissionKey } from '@/lib/auth/permissions'
 import type { Role } from '@/lib/types'
 
 const ROLE_ORDER: Role[] = ['admin', 'owner', 'staff']
@@ -209,7 +210,40 @@ function RoleMatrix({ data, onChange }: { data: PermissionsData; onChange: () =>
 
 function UserMatrix({ data, onChange }: { data: PermissionsData; onChange: () => void }) {
   const { users } = useUsers()
+  const { user: currentUser } = useAuth()
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  const [resettingId, setResettingId] = useState<string | null>(null)
+
+  const canManageUsers = can(currentUser, 'users:manage')
+
+  async function resetPassword(userId: string, email: string) {
+    setResettingId(userId)
+    try {
+      const res = await fetch(`/api/users/${userId}/reset-password`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Errore' }))
+        toast.error(err.error ?? 'Errore durante il reset')
+        return
+      }
+      const { tempPassword } = (await res.json()) as { tempPassword: string }
+      toast.success('Password temporanea generata', {
+        description: `${email}: ${tempPassword} — mostrata una sola volta, copiala ora.`,
+        duration: Infinity,
+        closeButton: true,
+        action: {
+          label: 'Copia',
+          onClick: () => {
+            navigator.clipboard?.writeText(tempPassword)
+            toast.success('Password copiata')
+          },
+        },
+      })
+    } catch {
+      toast.error('Errore durante il reset')
+    } finally {
+      setResettingId(null)
+    }
+  }
 
   return (
     <div className="space-y-2">
@@ -218,22 +252,41 @@ function UserMatrix({ data, onChange }: { data: PermissionsData; onChange: () =>
         const isOpen = expandedUserId === u.id
         return (
           <div key={u.id} className="rounded-xl border border-slate-200 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setExpandedUserId(isOpen ? null : u.id)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="text-left">
-                  <p className="text-sm font-medium text-slate-900">{u.email}</p>
-                  <p className="text-xs text-slate-500">
-                    {ROLE_LABEL[u.role]}
-                    {overrides.length > 0 && ` · ${overrides.length} override`}
-                  </p>
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => setExpandedUserId(isOpen ? null : u.id)}
+                className="flex-1 min-w-0 flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="text-left min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">{u.email}</p>
+                    <p className="text-xs text-slate-500">
+                      {ROLE_LABEL[u.role]}
+                      {overrides.length > 0 && ` · ${overrides.length} override`}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform', isOpen && 'rotate-180')} />
-            </button>
+                <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform shrink-0', isOpen && 'rotate-180')} />
+              </button>
+
+              {canManageUsers && (
+                <button
+                  type="button"
+                  onClick={() => resetPassword(u.id, u.email)}
+                  disabled={resettingId === u.id}
+                  className="shrink-0 px-3 py-3 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  title="Reimposta password"
+                  aria-label={`Reimposta password di ${u.email}`}
+                >
+                  {resettingId === u.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <KeyRound className="h-4 w-4" />
+                  )}
+                </button>
+              )}
+            </div>
 
             {isOpen && (
               <UserPermissionRows

@@ -41,6 +41,7 @@ export const users = pgTable(
     passwordHash: text('password_hash').notNull(),
     role: roleEnum('role').notNull().default('staff'),
     name: text('name'),
+    mustChangePassword: boolean('must_change_password').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index('users_bakery_idx').on(t.bakeryId)],

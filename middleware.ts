@@ -21,5 +21,6 @@ export const config = {
     '/product-lists/:path*',
     '/manage/:path*',
     '/statistics/:path*',
+    '/change-password/:path*',
   ],
 }

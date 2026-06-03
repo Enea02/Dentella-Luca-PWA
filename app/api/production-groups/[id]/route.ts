@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { productionGroupSections, productionGroups, sections } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 const UpdateSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -62,6 +63,7 @@ export const PATCH = withAuth<{ id: string }>(
       .from(productionGroupSections)
       .where(eq(productionGroupSections.groupId, id))
 
+    await notify(auth.bakeryId, { type: 'production-groups.updated' })
     return NextResponse.json({
       id: updated.id,
       name: updated.name,
@@ -81,6 +83,7 @@ export const DELETE = withAuth<{ id: string }>(
       .where(and(eq(productionGroups.id, id), eq(productionGroups.bakeryId, auth.bakeryId)))
       .returning({ id: productionGroups.id })
     if (deleted.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await notify(auth.bakeryId, { type: 'production-groups.updated' })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'production-groups:write' },

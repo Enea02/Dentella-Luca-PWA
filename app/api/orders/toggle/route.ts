@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { dailyItemStatus, dailyOrderItems, dailyOrders } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 const Schema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -35,7 +36,10 @@ export const POST = withAuth(
         .set({ done })
         .where(and(eq(dailyOrderItems.dailyOrderId, daily[0].id), eq(dailyOrderItems.productId, productId)))
         .returning({ id: dailyOrderItems.id })
-      if (updated.length > 0) return new NextResponse(null, { status: 204 })
+      if (updated.length > 0) {
+        await notify(auth.bakeryId, { type: 'orders.updated', date })
+        return new NextResponse(null, { status: 204 })
+      }
     }
 
     // Otherwise upsert into daily_item_status (recurring item override)
@@ -52,6 +56,7 @@ export const POST = withAuth(
         set: { done },
       })
 
+    await notify(auth.bakeryId, { type: 'orders.updated', date })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'orders:toggle' },

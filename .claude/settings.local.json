@@ -16,7 +16,22 @@
       "Bash(npx -y pnpm@10 exec vercel --version)",
       "Bash(git -C /Users/eneafrontera/Documents/GitHub/Dentella-Luca-PWA branch -a)",
       "Bash(git -C /Users/eneafrontera/Documents/GitHub/Dentella-Luca-PWA log --oneline -10 main)",
-      "Bash(git -C /Users/eneafrontera/Documents/GitHub/Dentella-Luca-PWA log --oneline -10 test)"
+      "Bash(git -C /Users/eneafrontera/Documents/GitHub/Dentella-Luca-PWA log --oneline -10 test)",
+      "Bash(pnpm db:generate)",
+      "Bash(corepack pnpm *)",
+      "Bash(corepack pnpm@10.33.4 add @serwist/next serwist)",
+      "Bash(node -e \"const p=require\\('/Users/eneafrontera/Documents/GitHub/Dentella-Luca-PWA/node_modules/@serwist/next/package.json'\\); console.log\\(JSON.stringify\\(Object.keys\\(p.exports||{}\\),null,2\\)\\); console.log\\('version', p.version\\)\")",
+      "Bash(node -e \"const p=require\\('/Users/eneafrontera/Documents/GitHub/Dentella-Luca-PWA/node_modules/serwist/package.json'\\); console.log\\(JSON.stringify\\(Object.keys\\(p.exports||{}\\),null,2\\)\\)\")",
+      "Bash(node -e \"const w=require\\('./node_modules/@serwist/next/dist/worker/index.js'\\); console.log\\('worker keys:', Object.keys\\(w\\)\\)\")",
+      "Bash(node -e \"const s=require\\('./node_modules/serwist/dist/index.js'\\); console.log\\('Serwist:', typeof s.Serwist, '| BackgroundSyncQueue:', typeof s.BackgroundSyncQueue\\)\")",
+      "Bash(node -e \"const p=require\\('./node_modules/@serwist/next/package.json'\\); console.log\\(JSON.stringify\\(p.exports['./worker'],null,2\\)\\)\")",
+      "Bash(node -e \"const p=require\\('./node_modules/serwist/package.json'\\); console.log\\(JSON.stringify\\(p.exports['.'],null,2\\)\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/swr/package.json'\\).version\\)\")",
+      "Bash(grep -c '\\\\b__TRACKED_VAR__\\\\b' node_modules/serwist/dist/index.d.mts)",
+      "Bash(echo \"--- non-video error count: $\\(npx tsc --noEmit 2>&1)",
+      "Bash(corepack pnpm@10.33.4 exec tsx scripts/_apply-must-change-password.ts)",
+      "Bash(echo \"=== APPLY EXIT=$? ===\")",
+      "Bash(echo \"--- non-video tsc errors: $\\(npx tsc --noEmit 2>&1)"
     ]
   }
 }

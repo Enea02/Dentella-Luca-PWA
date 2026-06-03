@@ -1,6 +1,7 @@
 'use client'
 
 import { AuthProvider } from '@/hooks/useAuth'
+import { SWRProvider } from '@/lib/swr-provider'
 import { AppShell } from '@/components/layout/AppShell'
 
 export default function AppLayout({
@@ -10,9 +11,11 @@ export default function AppLayout({
 }) {
   return (
     <AuthProvider>
-      <AppShell>
-        {children}
-      </AppShell>
+      <SWRProvider>
+        <AppShell>
+          {children}
+        </AppShell>
+      </SWRProvider>
     </AuthProvider>
   )
 }

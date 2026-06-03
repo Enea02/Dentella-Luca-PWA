@@ -3,7 +3,8 @@ import { asc, eq, inArray, max } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { productionGroupSections, productionGroups, sections } from '@/lib/db/schema'
-import { withAuth, parseJson } from '@/lib/api/handler'
+import { withAuth, parseJson, jsonWithCache } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 async function listGroups(bakeryId: string) {
   const groups = await db
@@ -46,7 +47,7 @@ async function listGroups(bakeryId: string) {
 }
 
 export const GET = withAuth(async (_req, { auth }) => {
-  return NextResponse.json(await listGroups(auth.bakeryId))
+  return jsonWithCache(await listGroups(auth.bakeryId), 60)
 })
 
 const CreateSchema = z.object({
@@ -94,6 +95,7 @@ export const POST = withAuth(
       return group
     })
 
+    await notify(auth.bakeryId, { type: 'production-groups.updated' })
     return NextResponse.json(
       {
         id: created.id,

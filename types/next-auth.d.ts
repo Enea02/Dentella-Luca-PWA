@@ -7,6 +7,7 @@ declare module 'next-auth' {
     bakeryId?: string
     bakeryName?: string
     permissions?: Record<string, boolean>
+    mustChangePassword?: boolean
   }
 
   interface Session {
@@ -16,6 +17,7 @@ declare module 'next-auth' {
       bakeryId?: string
       bakeryName?: string
       permissions?: Record<string, boolean>
+      mustChangePassword?: boolean
     } & DefaultSession['user']
   }
 }
@@ -27,6 +29,7 @@ declare module 'next-auth/jwt' {
     bakeryId?: string
     bakeryName?: string
     permissions?: Record<string, boolean>
+    mustChangePassword?: boolean
   }
 }
 

@@ -30,6 +30,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: users.name,
             bakeryId: users.bakeryId,
             bakeryName: bakeries.name,
+            mustChangePassword: users.mustChangePassword,
           })
           .from(users)
           .innerJoin(bakeries, eq(bakeries.id, users.bakeryId))
@@ -74,6 +75,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           bakeryId: user.bakeryId,
           bakeryName: user.bakeryName,
           permissions,
+          mustChangePassword: user.mustChangePassword,
         }
       },
     }),

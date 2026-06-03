@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { sections } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 const UpdateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
@@ -22,6 +23,7 @@ export const PATCH = withAuth<{ id: string }>(
       .returning({ id: sections.id, name: sections.name, color: sections.color, order: sections.order })
 
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await notify(auth.bakeryId, { type: 'products.updated' })
     return NextResponse.json(updated)
   },
   { require: 'sections:write' },
@@ -35,6 +37,7 @@ export const DELETE = withAuth<{ id: string }>(
       .where(and(eq(sections.id, id), eq(sections.bakeryId, auth.bakeryId)))
       .returning({ id: sections.id })
     if (deleted.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await notify(auth.bakeryId, { type: 'products.updated' })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'sections:write' },

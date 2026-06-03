@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db/client'
 import { bakeries, users } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 export const GET = withAuth(async (_req, { auth }) => {
   const rows = await db
@@ -19,7 +20,9 @@ export const GET = withAuth(async (_req, { auth }) => {
     .innerJoin(bakeries, eq(bakeries.id, users.bakeryId))
     .where(eq(users.bakeryId, auth.bakeryId))
     .orderBy(asc(users.email))
-  return NextResponse.json(rows)
+  const res = NextResponse.json(rows)
+  res.headers.set('Cache-Control', 'private, no-store')
+  return res
 })
 
 const CreateSchema = z.object({
@@ -60,6 +63,7 @@ export const POST = withAuth(
       .from(bakeries)
       .where(eq(bakeries.id, auth.bakeryId))
 
+    await notify(auth.bakeryId, { type: 'users.updated' })
     return NextResponse.json({ ...created, bakeryName }, { status: 201 })
   },
   { require: 'users:manage' },

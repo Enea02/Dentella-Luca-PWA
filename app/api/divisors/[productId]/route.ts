@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { divisors, products } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 const Schema = z.object({ value: z.number().int().positive() })
 
@@ -28,6 +29,7 @@ export const PATCH = withAuth<{ productId: string }>(
         set: { value },
       })
 
+    await notify(auth.bakeryId, { type: 'divisors.updated' })
     return NextResponse.json({ productId, value })
   },
   { require: 'divisors:write' },

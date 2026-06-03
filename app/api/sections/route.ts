@@ -3,7 +3,8 @@ import { asc, eq, max } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { sections } from '@/lib/db/schema'
-import { withAuth, parseJson } from '@/lib/api/handler'
+import { withAuth, parseJson, jsonWithCache } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 import { SECTION_COLOR_PALETTE } from '@/lib/constants'
 
 export const GET = withAuth(async (_req, { auth }) => {
@@ -12,7 +13,7 @@ export const GET = withAuth(async (_req, { auth }) => {
     .from(sections)
     .where(eq(sections.bakeryId, auth.bakeryId))
     .orderBy(asc(sections.order))
-  return NextResponse.json(rows)
+  return jsonWithCache(rows, 60)
 })
 
 const CreateSchema = z.object({ name: z.string().trim().min(1).max(80) })
@@ -39,6 +40,7 @@ export const POST = withAuth(
       .values({ bakeryId: auth.bakeryId, name, color, order: nextOrder })
       .returning({ id: sections.id, name: sections.name, color: sections.color, order: sections.order })
 
+    await notify(auth.bakeryId, { type: 'products.updated' })
     return NextResponse.json(created, { status: 201 })
   },
   { require: 'sections:write' },

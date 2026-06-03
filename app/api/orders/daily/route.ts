@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { customers, dailyOrderItems, dailyOrders, products } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 const ItemSchema = z.object({
   productId: z.string().uuid(),
@@ -85,6 +86,7 @@ export const POST = withAuth(
       }
     })
 
+    await notify(auth.bakeryId, { type: 'orders.updated', date: body.date })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'orders:edit' },

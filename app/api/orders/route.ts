@@ -21,52 +21,59 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
 
   const weekday = dayOfWeek(date)
 
-  const allCustomers = await db
-    .select({ id: customers.id, name: customers.name, type: customers.type })
-    .from(customers)
-    .where(eq(customers.bakeryId, auth.bakeryId))
+  // These three queries are independent — run them in parallel.
+  const [allCustomers, recurringRows, dailyRows] = await Promise.all([
+    db
+      .select({ id: customers.id, name: customers.name, type: customers.type })
+      .from(customers)
+      .where(eq(customers.bakeryId, auth.bakeryId)),
+    db
+      .select({
+        id: recurringOrders.id,
+        customerId: recurringOrders.customerId,
+        weekdays: recurringOrders.weekdays,
+      })
+      .from(recurringOrders)
+      .where(eq(recurringOrders.bakeryId, auth.bakeryId)),
+    db
+      .select({ id: dailyOrders.id, customerId: dailyOrders.customerId })
+      .from(dailyOrders)
+      .where(and(eq(dailyOrders.bakeryId, auth.bakeryId), eq(dailyOrders.date, date))),
+  ])
 
   const customerById = new Map(allCustomers.map((c) => [c.id, c]))
   const orderMap = new Map<string, ComputedDayOrder>()
 
   // 1. Recurring orders for this weekday
-  const recurringRows = await db
-    .select({
-      id: recurringOrders.id,
-      customerId: recurringOrders.customerId,
-      weekdays: recurringOrders.weekdays,
-    })
-    .from(recurringOrders)
-    .where(eq(recurringOrders.bakeryId, auth.bakeryId))
-
   const activeRecurring = recurringRows.filter((r) => (r.weekdays ?? []).includes(weekday))
 
   if (activeRecurring.length > 0) {
-    const recItems = await db
-      .select({
-        recurringOrderId: recurringOrderItems.recurringOrderId,
-        productId: recurringOrderItems.productId,
-        quantity: recurringOrderItems.quantity,
-        unit: recurringOrderItems.unit,
-      })
-      .from(recurringOrderItems)
-      .where(
-        inArray(
-          recurringOrderItems.recurringOrderId,
-          activeRecurring.map((r) => r.id),
+    // Recurring items and daily overrides are independent — run in parallel.
+    const [recItems, statusRows] = await Promise.all([
+      db
+        .select({
+          recurringOrderId: recurringOrderItems.recurringOrderId,
+          productId: recurringOrderItems.productId,
+          quantity: recurringOrderItems.quantity,
+          unit: recurringOrderItems.unit,
+        })
+        .from(recurringOrderItems)
+        .where(
+          inArray(
+            recurringOrderItems.recurringOrderId,
+            activeRecurring.map((r) => r.id),
+          ),
         ),
-      )
-
-    // Daily overrides (done/variant) for these customers on this date
-    const statusRows = await db
-      .select({
-        customerId: dailyItemStatus.customerId,
-        productId: dailyItemStatus.productId,
-        done: dailyItemStatus.done,
-        variant: dailyItemStatus.variant,
-      })
-      .from(dailyItemStatus)
-      .where(and(eq(dailyItemStatus.bakeryId, auth.bakeryId), eq(dailyItemStatus.date, date)))
+      db
+        .select({
+          customerId: dailyItemStatus.customerId,
+          productId: dailyItemStatus.productId,
+          done: dailyItemStatus.done,
+          variant: dailyItemStatus.variant,
+        })
+        .from(dailyItemStatus)
+        .where(and(eq(dailyItemStatus.bakeryId, auth.bakeryId), eq(dailyItemStatus.date, date))),
+    ])
     const statusMap = new Map<string, { done: boolean; variant: string | null }>()
     for (const s of statusRows) {
       statusMap.set(`${s.customerId}|${s.productId}`, { done: s.done, variant: s.variant })
@@ -100,12 +107,8 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
     }
   }
 
-  // 2. Daily orders for this date — override recurring entirely
-  const dailyRows = await db
-    .select({ id: dailyOrders.id, customerId: dailyOrders.customerId })
-    .from(dailyOrders)
-    .where(and(eq(dailyOrders.bakeryId, auth.bakeryId), eq(dailyOrders.date, date)))
-
+  // 2. Daily orders for this date — override recurring entirely.
+  // (dailyRows was fetched above in the parallel batch.)
   if (dailyRows.length > 0) {
     const dailyItemsRows = await db
       .select({
@@ -152,5 +155,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
     }
   }
 
-  return NextResponse.json(Array.from(orderMap.values()))
+  const res = NextResponse.json(Array.from(orderMap.values()))
+  res.headers.set('Cache-Control', 'private, no-store')
+  return res
 })

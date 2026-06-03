@@ -1,12 +1,14 @@
 'use client'
 
 import { TopNav } from './TopNav'
+import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 
 interface AppShellProps {
   children: React.ReactNode
 }
 
 export function AppShell({ children }: AppShellProps) {
+  useRealtimeSync()
   return (
     <div className="min-h-screen bg-slate-100">
       <TopNav />

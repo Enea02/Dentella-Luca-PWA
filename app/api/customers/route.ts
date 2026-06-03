@@ -3,7 +3,8 @@ import { asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { customers } from '@/lib/db/schema'
-import { withAuth, parseJson } from '@/lib/api/handler'
+import { withAuth, parseJson, jsonWithCache } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 
 export const GET = withAuth(async (_req, { auth }) => {
   const rows = await db
@@ -11,7 +12,7 @@ export const GET = withAuth(async (_req, { auth }) => {
     .from(customers)
     .where(eq(customers.bakeryId, auth.bakeryId))
     .orderBy(asc(customers.name))
-  return NextResponse.json(rows)
+  return jsonWithCache(rows, 60)
 })
 
 const CreateSchema = z.object({
@@ -26,6 +27,7 @@ export const POST = withAuth(
       .insert(customers)
       .values({ bakeryId: auth.bakeryId, name: body.name, type: body.type })
       .returning({ id: customers.id, name: customers.name, type: customers.type })
+    await notify(auth.bakeryId, { type: 'customers.updated' })
     return NextResponse.json(created, { status: 201 })
   },
   { require: 'customers:write' },

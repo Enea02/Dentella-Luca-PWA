@@ -62,3 +62,14 @@ export async function parseJson<T>(req: NextRequest, schema: ZodType<T>): Promis
   const body = await req.json()
   return schema.parse(body)
 }
+
+/**
+ * JSON response with a private Cache-Control header.
+ * @param maxAge fresh window in seconds
+ * @param swr stale-while-revalidate window in seconds (defaults to 2x maxAge)
+ */
+export function jsonWithCache<T>(data: T, maxAge: number, swr: number = maxAge * 2) {
+  const response = NextResponse.json(data)
+  response.headers.set('Cache-Control', `private, max-age=${maxAge}, stale-while-revalidate=${swr}`)
+  return response
+}

@@ -102,6 +102,7 @@ export interface User {
   bakeryId: string;
   bakeryName: string;
   permissions?: Record<string, boolean>;
+  mustChangePassword?: boolean;
 }
 
 // API Response types

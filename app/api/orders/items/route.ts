@@ -10,6 +10,7 @@ import {
   recurringOrders,
 } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
+import { notify } from '@/lib/realtime/notify'
 import { dayOfWeek } from '@/lib/utils'
 
 const AddSchema = z.object({
@@ -100,6 +101,7 @@ export const POST = withAuth(
       })
     })
 
+    await notify(auth.bakeryId, { type: 'orders.updated', date })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'orders:edit' },
@@ -149,7 +151,10 @@ export const PATCH = withAuth(
         .where(and(eq(dailyOrderItems.dailyOrderId, daily[0].id), eq(dailyOrderItems.productId, productId)))
         .returning({ id: dailyOrderItems.id })
 
-      if (updated.length > 0) return new NextResponse(null, { status: 204 })
+      if (updated.length > 0) {
+        await notify(auth.bakeryId, { type: 'orders.updated', date })
+        return new NextResponse(null, { status: 204 })
+      }
     }
 
     // Otherwise — this is a recurring-order item: persist override into daily_item_status
@@ -177,6 +182,7 @@ export const PATCH = withAuth(
         },
       })
 
+    await notify(auth.bakeryId, { type: 'orders.updated', date })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'orders:edit' },

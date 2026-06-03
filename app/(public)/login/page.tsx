@@ -13,6 +13,7 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/orders'
+  const passwordChanged = searchParams.get('changed') === '1'
   const { login } = useAuth()
 
   const [email, setEmail] = useState('')
@@ -38,6 +39,11 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {passwordChanged && (
+        <p className="text-sm text-emerald-600 text-center">
+          Password aggiornata. Accedi con la nuova password.
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         <Label htmlFor="email" className="text-slate-700">Email</Label>
         <Input
