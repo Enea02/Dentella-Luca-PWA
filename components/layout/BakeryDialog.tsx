@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useBakery, useUsers } from '@/hooks/useData'
 import { useAuth } from '@/hooks/useAuth'
+import { can } from '@/lib/auth/permissions'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,12 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
   const { user } = useAuth()
   const { bakery, update: updateBakery } = useBakery()
   const { users, create: createUser, update: updateUserRole, remove: removeUser } = useUsers()
+
+  // Authorization: these mirror the API permission checks (withAuth `require`).
+  // The endpoints already reject unauthorized calls (403); this hides controls
+  // the user can't use so the UI doesn't mislead them.
+  const canManageUsers = can(user, 'users:manage')
+  const canEditBakery = can(user, 'bakery:edit')
 
   // Bakery name editing
   const [bakeryName, setBakeryName] = useState('')
@@ -155,26 +162,31 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-slate-900">{bakery?.name}</span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-9 w-9 md:h-7 md:w-7 text-slate-400 hover:text-slate-600"
-                        onClick={() => setEditingName(true)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
+                      {canEditBakery && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 md:h-7 md:w-7 text-slate-400 hover:text-slate-600"
+                          onClick={() => setEditingName(true)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-500">ID</span>
-                  <span className="text-xs font-mono text-slate-400">{bakery?.id}</span>
-                </div>
+                {canEditBakery && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-500">ID</span>
+                    <span className="text-xs font-mono text-slate-400">{bakery?.id}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Users section */}
+            {/* Users section — management controls require the users:manage permission */}
+            {canManageUsers && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -288,6 +300,7 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                 )}
               </div>
             </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
