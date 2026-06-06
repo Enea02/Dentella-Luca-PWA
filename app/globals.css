@@ -122,7 +122,9 @@
   html,
   body {
     @apply bg-background text-foreground;
-    overflow-x: hidden;
+    /* `clip` clips horizontal overflow WITHOUT turning <body> into a scroll
+       container (which `hidden` does, causing nested-scroller jank on iOS). */
+    overflow-x: clip;
     overscroll-behavior-x: none;
     touch-action: pan-y;
   }

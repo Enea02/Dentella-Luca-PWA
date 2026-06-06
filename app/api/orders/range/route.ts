@@ -50,7 +50,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
     db
       .select({ id: customers.id, name: customers.name, type: customers.type })
       .from(customers)
-      .where(eq(customers.bakeryId, auth.bakeryId)),
+      .where(and(eq(customers.bakeryId, auth.bakeryId), eq(customers.active, true))),
     db
       .select({
         id: recurringOrders.id,

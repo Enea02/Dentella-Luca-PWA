@@ -93,6 +93,7 @@ export const customers = pgTable(
       .references(() => bakeries.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     type: customerTypeEnum('type').notNull().default('single'),
+    active: boolean('active').notNull().default(true),
   },
   (t) => [index('customers_bakery_idx').on(t.bakeryId)],
 )

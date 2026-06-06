@@ -167,7 +167,7 @@ export function useCustomers() {
     isLoading,
     error,
     mutate,
-    create: async (customer: Omit<Customer, 'id'>) => {
+    create: async (customer: Omit<Customer, 'id' | 'active'>) => {
       const newCustomer = await customersApi.create(customer)
       await mutate()
       return newCustomer

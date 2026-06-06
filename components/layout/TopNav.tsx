@@ -55,7 +55,7 @@ export function TopNav() {
 
   return (
     <>
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200">
+    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200 pt-[env(safe-area-inset-top)]">
       <div className="flex items-center justify-between gap-2 px-3 py-2 md:px-4 md:py-3 max-w-7xl mx-auto">
         {/* Mobile: hamburger + logo */}
         <div className="flex items-center gap-1 shrink-0">

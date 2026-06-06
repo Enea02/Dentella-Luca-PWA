@@ -28,8 +28,9 @@ const serwist = new Serwist({
     // Reference data — StaleWhileRevalidate (serve from cache, refresh in background)
     {
       matcher: /\/api\/(products|customers|sections|production-groups|divisors|bakery)$/,
-      handler: new StaleWhileRevalidate({
+      handler: new NetworkFirst({
         cacheName: 'api-reference-data',
+        networkTimeoutSeconds: 3,
         plugins: [new ExpirationPlugin({ maxEntries: 20, maxAgeSeconds: 24 * 60 * 60 })], // 24h
       }),
     },

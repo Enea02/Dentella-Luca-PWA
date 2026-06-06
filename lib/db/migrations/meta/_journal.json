@@ -15,6 +15,13 @@
       "when": 1780230395408,
       "tag": "0001_colorful_felicia_hardy",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780747949047,
+      "tag": "0002_perpetual_blacklash",
+      "breakpoints": true
     }
   ]
 }

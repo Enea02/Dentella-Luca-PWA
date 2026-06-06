@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Search, Plus, Pencil, Trash2, Copy } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { CustomerEditDialog } from './CustomerEditDialog'
 import type { Customer } from '@/lib/types'
@@ -22,7 +23,7 @@ import {
 import { toast } from 'sonner'
 
 export function CustomersManager() {
-  const { customers, remove } = useCustomers()
+  const { customers, remove, update } = useCustomers()
   const [search, setSearch] = useState('')
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null)
   const [isNewOpen, setIsNewOpen] = useState(false)
@@ -32,6 +33,15 @@ export function CustomersManager() {
   const filteredCustomers = customers
     .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name))
+
+  const toggleActive = async (customer: Customer) => {
+    try {
+      await update(customer.id, { active: !customer.active })
+      toast.success(customer.active ? 'Cliente sospeso' : 'Cliente riattivato')
+    } catch {
+      toast.error('Errore durante l\'aggiornamento')
+    }
+  }
 
   const handleDelete = async () => {
     if (!deleteCustomer) return
@@ -71,7 +81,10 @@ export function CustomersManager() {
           {filteredCustomers.map(customer => (
             <div
               key={customer.id}
-              className="flex items-center justify-between px-4 py-3 rounded-xl bg-white ring-1 ring-slate-200"
+              className={cn(
+                'flex items-center justify-between px-4 py-3 rounded-xl bg-white ring-1 ring-slate-200',
+                !customer.active && 'opacity-60'
+              )}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <span className="font-medium text-slate-900 truncate">
@@ -85,8 +98,19 @@ export function CustomersManager() {
                 )}>
                   {customer.type === 'fixed' ? 'Fisso' : 'Giornaliero'}
                 </span>
+                {!customer.active && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0 bg-amber-100 text-amber-700">
+                    Sospeso
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1">
+                <Switch
+                  checked={customer.active}
+                  onCheckedChange={() => toggleActive(customer)}
+                  title={customer.active ? 'Attivo — clicca per sospendere' : 'Sospeso — clicca per riattivare'}
+                  className="mr-1 shrink-0"
+                />
                 {customer.type === 'fixed' && (
                   <Button
                     variant="ghost"

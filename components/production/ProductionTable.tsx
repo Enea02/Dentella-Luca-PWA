@@ -24,9 +24,9 @@ export function ProductionTable({ title, sections, orders, onToggleCell, display
   const workMode = useAppStore(state => state.workMode)
   const allProductIds = sections.flatMap(s => s.products.map(p => p.id))
 
-  const relevantOrders = orders.filter(order =>
-    order.items.some(item => allProductIds.includes(item.productId))
-  )
+  const relevantOrders = orders
+    .filter(order => order.items.some(item => allProductIds.includes(item.productId)))
+    .sort((a, b) => a.customerName.localeCompare(b.customerName, 'it'))
 
   if (relevantOrders.length === 0) return null
 
@@ -39,7 +39,7 @@ export function ProductionTable({ title, sections, orders, onToggleCell, display
       {/* Mobile: card list (hidden on md+) */}
       <div className="md:hidden divide-y divide-slate-100">
         {relevantOrders.map(order => {
-          const status = getOrderStatus(order.items)
+          const status = getOrderStatus(order.items.filter(i => allProductIds.includes(i.productId)))
           const itemsBySection = sections
             .map(section => ({
               section,
@@ -119,7 +119,7 @@ export function ProductionTable({ title, sections, orders, onToggleCell, display
             </thead>
             <tbody>
               {relevantOrders.map(order => {
-                const status = getOrderStatus(order.items)
+                const status = getOrderStatus(order.items.filter(i => allProductIds.includes(i.productId)))
                 return (
                   <tr key={order.customerId} className="border-b border-slate-50 last:border-0">
                     <td className={cn(
@@ -227,7 +227,7 @@ export function ProductionTable({ title, sections, orders, onToggleCell, display
 
             <tbody>
               {relevantOrders.map(order => {
-                const status = getOrderStatus(order.items)
+                const status = getOrderStatus(order.items.filter(i => allProductIds.includes(i.productId)))
                 return (
                   <tr key={order.customerId} className="border-b border-slate-50 last:border-0">
                     <td className={cn(

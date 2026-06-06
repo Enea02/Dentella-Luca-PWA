@@ -148,6 +148,12 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
     )
   }
 
+  function updateUnit(localId: string, unit: 'pieces' | 'kg') {
+    setItems((prev) =>
+      prev.map((i) => (i.localId === localId ? { ...i, unit } : i))
+    )
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) {
@@ -266,15 +272,21 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
                           </span>
                           <input
                             type="number"
-                            min="0.5"
-                            step="0.5"
+                            min="0.01"
+                            step="any"
                             value={item.quantity}
                             onChange={(e) => updateQty(item.localId, Number(e.target.value) || 1)}
                             className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-xs outline-none"
                           />
-                          <span className="w-5 text-xs text-slate-400">
-                            {item.unit === 'kg' ? 'kg' : 'pz'}
-                          </span>
+                          <Select value={item.unit} onValueChange={(v) => updateUnit(item.localId, v as 'pieces' | 'kg')}>
+                            <SelectTrigger className="w-[3.5rem] rounded-lg text-xs h-7 px-2">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pieces">pz</SelectItem>
+                              <SelectItem value="kg">kg</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <button
                             type="button"
                             onClick={() => removeItem(item.localId)}
@@ -315,7 +327,8 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
                     </Select>
                     <input
                       type="number"
-                      min="1"
+                      min="0.01"
+                      step="any"
                       value={addQty}
                       onChange={(e) => setAddQty(Number(e.target.value) || 1)}
                       className="w-12 rounded-xl border border-slate-200 px-1 py-1.5 text-center text-xs outline-none"

@@ -90,7 +90,7 @@ export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVa
           onBlur={handleQuantityBlur}
           className="w-12 md:w-16 h-8 px-1 md:px-3 text-center text-sm rounded-lg shrink-0"
           min={0}
-          step={item.unit === 'kg' ? 0.1 : 1}
+          step={item.unit === 'kg' ? 'any' : 1}
         />
 
         {/* Unit select */}

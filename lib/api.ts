@@ -16,6 +16,11 @@ import type {
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   const res = await fetch(`/api${endpoint}`, {
     ...options,
+    // SWR (in-memory + localStorage) is our cache layer. Always hit the network
+    // for the SPA's own requests, otherwise the reference-data Cache-Control
+    // headers serve a stale list after an in-app edit (e.g. toggling a customer
+    // active/suspended) for up to 60s.
+    cache: 'no-store',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
   })
@@ -55,7 +60,7 @@ export const productsApi = {
 // ---- Customers ----
 export const customersApi = {
   list: () => fetchRequired<Customer[]>('/customers'),
-  create: (customer: Omit<Customer, 'id'>) =>
+  create: (customer: Omit<Customer, 'id' | 'active'>) =>
     fetchRequired<Customer>('/customers', { method: 'POST', body: JSON.stringify(customer) }),
   update: (id: string, customer: Partial<Customer>) =>
     fetchRequired<Customer>(`/customers/${id}`, { method: 'PATCH', body: JSON.stringify(customer) }),

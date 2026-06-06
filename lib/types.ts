@@ -42,6 +42,7 @@ export interface Customer {
   id: string;
   name: string;
   type: CustomerType;
+  active: boolean;
 }
 
 export interface OrderItem {
