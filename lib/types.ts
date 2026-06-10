@@ -93,6 +93,7 @@ export interface Divisor {
 export interface Bakery {
   id: string;
   name: string;
+  orderCutoffHour: number | null;
 }
 
 // User/Auth

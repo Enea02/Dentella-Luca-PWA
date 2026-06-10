@@ -43,7 +43,7 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState('')
   const [unit, setUnit] = useState<'pieces' | 'kg'>('pieces')
-  const [qty, setQty] = useState(1)
+  const [qty, setQty] = useState('')
   const [items, setItems] = useState<DraftItem[]>([])
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -78,18 +78,19 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
 
   function addItem() {
     const product = products.find((p) => p.id === selectedProductId)
-    if (!product || qty <= 0) return
+    const parsedQty = parseFloat(qty)
+    if (!product || isNaN(parsedQty) || parsedQty <= 0) return
     setItems((prev) => [
       ...prev,
       {
         localId: `${Date.now()}-${Math.random()}`,
         productId: product.id,
         productName: product.name,
-        quantity: qty,
+        quantity: parsedQty,
         unit,
       },
     ])
-    setQty(1)
+    setQty('')
   }
 
   function removeItem(localId: string) {
@@ -101,7 +102,7 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
     setSelectedCustomerId(null)
     setDropdownOpen(false)
     setItems([])
-    setQty(1)
+    setQty('')
     onClose()
   }
 
@@ -215,9 +216,12 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
 
             <input
               type="number"
-              min="1"
+              min="0"
+              step="any"
+              inputMode="decimal"
               value={qty}
-              onChange={(e) => setQty(Number(e.target.value) || 1)}
+              onChange={(e) => setQty(e.target.value)}
+              placeholder="Qtà"
               className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
             />
           </div>
@@ -225,7 +229,7 @@ export function NewDailyOrderDialog({ open, onClose, onSave, existingOrders }: N
           <button
             type="button"
             onClick={addItem}
-            disabled={!selectedProductId}
+            disabled={!selectedProductId || !(parseFloat(qty) > 0)}
             className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 ring-1 ring-slate-200 disabled:opacity-40"
           >
             + Aggiungi prodotto

@@ -26,6 +26,8 @@ export const bakeries = pgTable('bakeries', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
+  // Hour (0-23) after which the app defaults to the NEXT day's orders. null = off.
+  orderCutoffHour: integer('order_cutoff_hour'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
@@ -128,6 +130,7 @@ export const recurringOrderItems = pgTable(
       .references(() => products.id, { onDelete: 'cascade' }),
     quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
     unit: unitEnum('unit').notNull(),
+    position: integer('position').notNull().default(0),
   },
   (t) => [index('recurring_items_order_idx').on(t.recurringOrderId)],
 )
@@ -165,6 +168,7 @@ export const dailyOrderItems = pgTable(
     unit: unitEnum('unit').notNull(),
     done: boolean('done').notNull().default(false),
     variant: text('variant'),
+    position: integer('position').notNull().default(0),
   },
   (t) => [index('daily_items_order_idx').on(t.dailyOrderId)],
 )

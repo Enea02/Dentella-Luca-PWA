@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { and, between, eq, inArray } from 'drizzle-orm'
+import { and, asc, between, eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import {
   customers,
@@ -96,6 +96,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
             productId: recurringOrderItems.productId,
             quantity: recurringOrderItems.quantity,
             unit: recurringOrderItems.unit,
+            position: recurringOrderItems.position,
           })
           .from(recurringOrderItems)
           .where(
@@ -104,6 +105,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
               recurringRows.map((r) => r.id),
             ),
           )
+          .orderBy(asc(recurringOrderItems.position))
       : []
 
   const recItemsByOrder = new Map<string, typeof recItems>()
@@ -124,6 +126,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
             unit: dailyOrderItems.unit,
             done: dailyOrderItems.done,
             variant: dailyOrderItems.variant,
+            position: dailyOrderItems.position,
           })
           .from(dailyOrderItems)
           .where(
@@ -132,6 +135,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
               dailyRows.map((d) => d.id),
             ),
           )
+          .orderBy(asc(dailyOrderItems.position))
       : []
 
   const itemsByDaily = new Map<string, OrderItem[]>()

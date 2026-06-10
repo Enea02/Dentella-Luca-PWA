@@ -243,6 +243,38 @@ export function useOrders(date: string) {
       await ordersApi.updateItem(date, customerId, productId, updates)
       await mutate()
     },
+    removeItem: async (customerId: string, productId: string) => {
+      mutate(
+        (current) =>
+          current?.map((order) =>
+            order.customerId === customerId
+              ? { ...order, items: order.items.filter((item) => item.productId !== productId) }
+              : order,
+          ),
+        false,
+      )
+      await ordersApi.removeItem(date, customerId, productId)
+      await mutate()
+    },
+    reorderItems: async (customerId: string, orderedProductIds: string[]) => {
+      mutate(
+        (current) =>
+          current?.map((order) =>
+            order.customerId === customerId
+              ? {
+                  ...order,
+                  items: [...order.items].sort(
+                    (a, b) =>
+                      orderedProductIds.indexOf(a.productId) - orderedProductIds.indexOf(b.productId),
+                  ),
+                }
+              : order,
+          ),
+        false,
+      )
+      await ordersApi.reorderItems(date, customerId, orderedProductIds)
+      await mutate()
+    },
   }
 }
 
@@ -292,7 +324,11 @@ export function useBakery() {
     isLoading,
     error,
     update: async (name: string) => {
-      await bakeryApi.update(name)
+      await bakeryApi.update({ name })
+      await mutate()
+    },
+    updateSettings: async (updates: { name?: string; orderCutoffHour?: number | null }) => {
+      await bakeryApi.update(updates)
       await mutate()
     },
   }

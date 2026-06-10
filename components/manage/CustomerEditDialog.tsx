@@ -28,7 +28,8 @@ const WEEKDAYS: { value: Weekday; label: string }[] = [
 interface DraftItem {
   localId: string
   productId: string
-  quantity: number
+  // Held as a string while editing so the field can be cleared without snapping to 1.
+  quantity: number | string
   unit: 'pieces' | 'kg'
 }
 
@@ -51,7 +52,7 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
 
   const [addProductId, setAddProductId] = useState('')
   const [addUnit, setAddUnit] = useState<'pieces' | 'kg'>('pieces')
-  const [addQty, setAddQty] = useState(1)
+  const [addQty, setAddQty] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
 
@@ -111,7 +112,7 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
       }
     }
     setAddProductId('')
-    setAddQty(1)
+    setAddQty('')
     return () => {
       cancelled = true
     }
@@ -124,25 +125,26 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
   }
 
   function addItem() {
-    if (!addProductId || addQty <= 0) return
+    const qty = parseFloat(addQty)
+    if (!addProductId || isNaN(qty) || qty <= 0) return
     setItems((prev) => [
       ...prev,
       {
         localId: `${Date.now()}-${Math.random()}`,
         productId: addProductId,
-        quantity: addQty,
+        quantity: qty,
         unit: addUnit,
       },
     ])
     setAddProductId('')
-    setAddQty(1)
+    setAddQty('')
   }
 
   function removeItem(localId: string) {
     setItems((prev) => prev.filter((i) => i.localId !== localId))
   }
 
-  function updateQty(localId: string, qty: number) {
+  function updateQty(localId: string, qty: string) {
     setItems((prev) =>
       prev.map((i) => (i.localId === localId ? { ...i, quantity: qty } : i))
     )
@@ -169,7 +171,7 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
           await upsertRecurringOrder(
             newCustomer.id,
             weekdays,
-            items.map(({ productId, quantity, unit }) => ({ productId, quantity, unit, done: false }))
+            items.map(({ productId, quantity, unit }) => ({ productId, quantity: Number(quantity) || 0, unit, done: false }))
           )
         }
         toast.success('Cliente creato')
@@ -179,7 +181,7 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
           await upsertRecurringOrder(
             customer.id,
             weekdays,
-            items.map(({ productId, quantity, unit }) => ({ productId, quantity, unit, done: false }))
+            items.map(({ productId, quantity, unit }) => ({ productId, quantity: Number(quantity) || 0, unit, done: false }))
           )
         }
         toast.success('Cliente aggiornato')
@@ -272,10 +274,11 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
                           </span>
                           <input
                             type="number"
+                            inputMode="decimal"
                             min="0.01"
                             step="any"
                             value={item.quantity}
-                            onChange={(e) => updateQty(item.localId, Number(e.target.value) || 1)}
+                            onChange={(e) => updateQty(item.localId, e.target.value)}
                             className="w-14 rounded-lg border border-slate-200 px-2 py-1 text-center text-xs outline-none"
                           />
                           <Select value={item.unit} onValueChange={(v) => updateUnit(item.localId, v as 'pieces' | 'kg')}>
@@ -327,10 +330,12 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
                     </Select>
                     <input
                       type="number"
+                      inputMode="decimal"
                       min="0.01"
                       step="any"
                       value={addQty}
-                      onChange={(e) => setAddQty(Number(e.target.value) || 1)}
+                      placeholder="Qtà"
+                      onChange={(e) => setAddQty(e.target.value)}
                       className="w-12 rounded-xl border border-slate-200 px-1 py-1.5 text-center text-xs outline-none"
                     />
                     <button

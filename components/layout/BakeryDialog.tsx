@@ -42,7 +42,7 @@ const ROLE_COLORS: Record<Role, string> = {
 
 export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
   const { user } = useAuth()
-  const { bakery, update: updateBakery } = useBakery()
+  const { bakery, update: updateBakery, updateSettings } = useBakery()
   const { users, create: createUser, update: updateUserRole, remove: removeUser } = useUsers()
 
   // Authorization: these mirror the API permission checks (withAuth `require`).
@@ -81,6 +81,21 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
       toast.error('Errore durante il salvataggio')
     } finally {
       setSavingName(false)
+    }
+  }
+
+  // Order cutoff hour. Radix Select can't use an empty value, so 'off' is a
+  // sentinel that maps to null (feature disabled).
+  const CUTOFF_OFF = 'off'
+  const cutoffValue = bakery?.orderCutoffHour == null ? CUTOFF_OFF : String(bakery.orderCutoffHour)
+
+  async function handleCutoffChange(value: string) {
+    const orderCutoffHour = value === CUTOFF_OFF ? null : Number(value)
+    try {
+      await updateSettings({ orderCutoffHour })
+      toast.success('Orario aggiornato')
+    } catch {
+      toast.error('Errore durante il salvataggio')
     }
   }
 
@@ -175,6 +190,30 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                     </div>
                   )}
                 </div>
+
+                {canEditBakery && (
+                  <div className="space-y-2 border-t border-slate-100 pt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-slate-500">Cambio giorno</span>
+                      <Select value={cutoffValue} onValueChange={handleCutoffChange}>
+                        <SelectTrigger className="h-10 md:h-8 w-32 text-sm rounded-lg">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={CUTOFF_OFF}>Disattivato</SelectItem>
+                          {Array.from({ length: 24 }, (_, h) => (
+                            <SelectItem key={h} value={String(h)}>
+                              {String(h).padStart(2, '0')}:00
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Dopo quest&apos;ora l&apos;app mostra gli ordini del giorno successivo.
+                    </p>
+                  </div>
+                )}
 
                 {canEditBakery && (
                   <div className="flex items-center justify-between">

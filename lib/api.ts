@@ -80,6 +80,16 @@ export const ordersApi = {
       method: 'PATCH',
       body: JSON.stringify({ date, customerId, productId, updates }),
     }).then(() => undefined),
+  removeItem: (date: string, customerId: string, productId: string) =>
+    fetchApi<void>('/orders/items', {
+      method: 'DELETE',
+      body: JSON.stringify({ date, customerId, productId }),
+    }).then(() => undefined),
+  reorderItems: (date: string, customerId: string, orderedProductIds: string[]) =>
+    fetchApi<void>('/orders/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ date, customerId, orderedProductIds }),
+    }).then(() => undefined),
 }
 
 export async function getCustomerRecurringOrder(customerId: string): Promise<RecurringOrder | null> {
@@ -121,8 +131,8 @@ export async function addOrderItem(date: string, customerId: string, item: Order
 // ---- Bakery ----
 export const bakeryApi = {
   get: () => fetchRequired<Bakery>('/bakery'),
-  update: (name: string) =>
-    fetchRequired<Bakery>('/bakery', { method: 'PATCH', body: JSON.stringify({ name }) }),
+  update: (updates: { name?: string; orderCutoffHour?: number | null }) =>
+    fetchRequired<Bakery>('/bakery', { method: 'PATCH', body: JSON.stringify(updates) }),
 }
 
 // ---- Users ----

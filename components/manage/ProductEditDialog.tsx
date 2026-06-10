@@ -53,11 +53,14 @@ export function ProductEditDialog({ product, open, onClose }: ProductEditDialogP
 
     setIsLoading(true)
     try {
+      const parsedPiecesPerKg = parseInt(piecesPerKg, 10)
       const productData = {
         name: name.trim(),
         section,
         unit: (isKg ? 'kg' : 'pieces') as 'kg' | 'pieces',
-        ...(isKg && piecesPerKg ? { piecesPerKg: parseInt(piecesPerKg, 10) } : {}),
+        ...(isKg && !isNaN(parsedPiecesPerKg) && parsedPiecesPerKg > 0
+          ? { piecesPerKg: parsedPiecesPerKg }
+          : {}),
       }
 
       if (isNew) {

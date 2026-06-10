@@ -2,6 +2,7 @@
 
 import { TopNav } from './TopNav'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
+import { useBusinessDay } from '@/hooks/useBusinessDay'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -9,6 +10,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   useRealtimeSync()
+  useBusinessDay()
   return (
     <div className="min-h-dvh bg-slate-100">
       <TopNav />

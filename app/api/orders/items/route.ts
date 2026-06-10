@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { and, eq } from 'drizzle-orm'
+import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import {
@@ -67,6 +67,7 @@ async function getOrCreateDailyOrder(
       })
       .from(recurringOrderItems)
       .where(eq(recurringOrderItems.recurringOrderId, recurring.id))
+      .orderBy(asc(recurringOrderItems.position))
 
     if (recItems.length > 0) {
       // Carry over per-day done/variant overrides so they survive materialization.
@@ -87,7 +88,7 @@ async function getOrCreateDailyOrder(
       const statusByProduct = new Map(statusRows.map((s) => [s.productId, s]))
 
       await tx.insert(dailyOrderItems).values(
-        recItems.map((it) => {
+        recItems.map((it, i) => {
           const s = statusByProduct.get(it.productId)
           return {
             dailyOrderId: dailyId,
@@ -96,6 +97,7 @@ async function getOrCreateDailyOrder(
             unit: it.unit,
             done: s?.done ?? false,
             variant: s?.variant ?? null,
+            position: i,
           }
         }),
       )
@@ -134,6 +136,14 @@ export const POST = withAuth(
 
     await db.transaction(async (tx) => {
       const dailyId = await getOrCreateDailyOrder(tx, auth.bakeryId, date, customerId)
+      // New items go to the bottom of the order.
+      const [last] = await tx
+        .select({ position: dailyOrderItems.position })
+        .from(dailyOrderItems)
+        .where(eq(dailyOrderItems.dailyOrderId, dailyId))
+        .orderBy(desc(dailyOrderItems.position))
+        .limit(1)
+      const nextPosition = last ? last.position + 1 : 0
       await tx.insert(dailyOrderItems).values({
         dailyOrderId: dailyId,
         productId: item.productId,
@@ -141,6 +151,7 @@ export const POST = withAuth(
         unit: item.unit,
         done: item.done ?? false,
         variant: item.variant ?? null,
+        position: nextPosition,
       })
     })
 
@@ -257,6 +268,34 @@ export const PATCH = withAuth(
           ...(updates.variant !== undefined ? { variant: updates.variant } : {}),
         },
       })
+
+    await notify(auth.bakeryId, { type: 'orders.updated', date })
+    return new NextResponse(null, { status: 204 })
+  },
+  { require: 'orders:edit' },
+)
+
+const DeleteSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  customerId: z.string().uuid(),
+  productId: z.string().uuid(),
+})
+
+export const DELETE = withAuth(
+  async (req: NextRequest, { auth }) => {
+    const { date, customerId, productId } = await parseJson(req, DeleteSchema)
+
+    // Removing an item is a structural edit: it must land on a real daily_order
+    // item. For a recurring customer with no daily order yet, materialize the
+    // template first so the deletion applies only to this date.
+    await db.transaction(async (tx) => {
+      const dailyId = await getOrCreateDailyOrder(tx, auth.bakeryId, date, customerId)
+      await tx
+        .delete(dailyOrderItems)
+        .where(
+          and(eq(dailyOrderItems.dailyOrderId, dailyId), eq(dailyOrderItems.productId, productId)),
+        )
+    })
 
     await notify(auth.bakeryId, { type: 'orders.updated', date })
     return new NextResponse(null, { status: 204 })
