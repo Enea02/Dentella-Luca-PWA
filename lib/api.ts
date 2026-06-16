@@ -85,11 +85,6 @@ export const ordersApi = {
       method: 'DELETE',
       body: JSON.stringify({ date, customerId, productId }),
     }).then(() => undefined),
-  reorderItems: (date: string, customerId: string, orderedProductIds: string[]) =>
-    fetchApi<void>('/orders/reorder', {
-      method: 'POST',
-      body: JSON.stringify({ date, customerId, orderedProductIds }),
-    }).then(() => undefined),
 }
 
 export async function getCustomerRecurringOrder(customerId: string): Promise<RecurringOrder | null> {

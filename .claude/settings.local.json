@@ -31,7 +31,8 @@
       "Bash(echo \"--- non-video error count: $\\(npx tsc --noEmit 2>&1)",
       "Bash(corepack pnpm@10.33.4 exec tsx scripts/_apply-must-change-password.ts)",
       "Bash(echo \"=== APPLY EXIT=$? ===\")",
-      "Bash(echo \"--- non-video tsc errors: $\\(npx tsc --noEmit 2>&1)"
+      "Bash(echo \"--- non-video tsc errors: $\\(npx tsc --noEmit 2>&1)",
+      "Bash(echo \"--- errori non-video: $\\(npx tsc --noEmit 2>&1)"
     ]
   }
 }

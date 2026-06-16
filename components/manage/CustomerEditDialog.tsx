@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useCustomers, useProducts, useSections } from '@/hooks/useData'
+import { useAuth } from '@/hooks/useAuth'
+import { useDragReorder } from '@/hooks/useDragReorder'
 import { getCustomerRecurringOrder, upsertRecurringOrder } from '@/lib/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -12,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import type { Customer, Weekday } from '@/lib/types'
-import { Loader2, X } from 'lucide-react'
+import { GripVertical, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const WEEKDAYS: { value: Weekday; label: string }[] = [
@@ -44,6 +46,8 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
   const { create, update } = useCustomers()
   const { products } = useProducts()
   const { sections } = useSections()
+  const { user } = useAuth()
+  const canReorder = user?.role === 'admin'
 
   const [name, setName] = useState('')
   const [isFixed, setIsFixed] = useState(false)
@@ -55,6 +59,17 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
   const [addQty, setAddQty] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
+
+  const { displayItems, registerRow, dragHandleProps, draggingId } = useDragReorder(
+    items,
+    (i) => i.localId,
+    (ids) =>
+      setItems((prev) =>
+        ids
+          .map((id) => prev.find((i) => i.localId === id))
+          .filter((i): i is DraftItem => i !== undefined),
+      ),
+  )
 
   const isNew = !customer
   const groupedProducts = [...sections]
@@ -265,10 +280,26 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
                     {items.length === 0 && (
                       <p className="text-xs text-slate-400">Nessun articolo aggiunto.</p>
                     )}
-                    {items.map((item) => {
+                    {displayItems.map((item) => {
                       const product = products.find((p) => p.id === item.productId)
                       return (
-                        <div key={item.localId} className="flex items-center gap-2">
+                        <div
+                          key={item.localId}
+                          ref={registerRow(item.localId)}
+                          className={cn(
+                            'flex items-center gap-1.5 rounded-lg transition-colors',
+                            draggingId === item.localId && 'bg-slate-100 ring-2 ring-slate-300',
+                          )}
+                        >
+                          {canReorder && (
+                            <div
+                              {...dragHandleProps(item.localId)}
+                              className="shrink-0 cursor-grab touch-none text-slate-300 transition-colors hover:text-slate-500 active:cursor-grabbing"
+                              aria-label="Trascina per riordinare"
+                            >
+                              <GripVertical className="h-3.5 w-3.5" />
+                            </div>
+                          )}
                           <span className="flex-1 truncate text-xs text-slate-700">
                             {product?.name ?? item.productId}
                           </span>

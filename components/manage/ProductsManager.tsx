@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useProducts, useSections } from '@/hooks/useData'
+import { useDragReorder } from '@/hooks/useDragReorder'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -36,40 +37,22 @@ export function ProductsManager() {
   const [deleteSection, setDeleteSection] = useState<SectionDef | null>(null)
   const [movingProduct, setMovingProduct] = useState<string | null>(null)
 
-  // Drag state for section reorder
-  const dragSectionId = useRef<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
-
   const q = search.toLowerCase()
   const sortedSections = [...sections].sort((a, b) => a.order - b.order)
 
-  const grouped = sortedSections.map(s => ({
+  const { displayItems: orderedSections, registerRow, dragHandleProps, draggingId } = useDragReorder(
+    sortedSections,
+    (s) => s.id,
+    (ids) => reorder(ids),
+  )
+
+  const grouped = orderedSections.map(s => ({
     section: s,
     products: products
       .filter(p => p.section === s.name)
       .filter(p => !q || p.name.toLowerCase().includes(q) || p.section.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name)),
   })).filter(g => !q || g.products.length > 0)
-
-  // --- Drag handlers for section reorder ---
-  const handleDragStart = (id: string) => { dragSectionId.current = id }
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault()
-    setDragOverId(id)
-  }
-  const handleDrop = async (targetId: string) => {
-    const sourceId = dragSectionId.current
-    if (!sourceId || sourceId === targetId) { setDragOverId(null); return }
-    const ids = sortedSections.map(s => s.id)
-    const from = ids.indexOf(sourceId)
-    const to = ids.indexOf(targetId)
-    const reordered = [...ids]
-    reordered.splice(from, 1)
-    reordered.splice(to, 0, sourceId)
-    setDragOverId(null)
-    dragSectionId.current = null
-    await reorder(reordered)
-  }
 
   // --- Move product to another section ---
   const handleMoveProduct = async (product: Product, targetSectionName: string) => {
@@ -161,21 +144,23 @@ export function ProductsManager() {
           {grouped.map(({ section, products: sectionProducts }) => (
             <div
               key={section.id}
-              draggable
-              onDragStart={() => handleDragStart(section.id)}
-              onDragOver={(e) => handleDragOver(e, section.id)}
-              onDragEnd={() => setDragOverId(null)}
-              onDrop={() => handleDrop(section.id)}
+              ref={registerRow(section.id)}
               className={cn(
                 'rounded-2xl border-2 transition-colors',
-                dragOverId === section.id
+                draggingId === section.id
                   ? 'border-slate-400 bg-slate-50'
                   : 'border-transparent'
               )}
             >
               {/* Section header */}
               <div className="flex items-center gap-1.5 md:gap-2 mb-2 px-1 min-w-0">
-                <GripVertical className="h-4 w-4 text-slate-300 cursor-grab active:cursor-grabbing shrink-0" />
+                <div
+                  {...dragHandleProps(section.id)}
+                  className="shrink-0 cursor-grab touch-none text-slate-300 active:cursor-grabbing"
+                  aria-label="Trascina per riordinare"
+                >
+                  <GripVertical className="h-4 w-4" />
+                </div>
                 <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold truncate min-w-0', section.color)}>
                   {section.name}
                 </span>

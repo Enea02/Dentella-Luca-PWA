@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { customers, recurringOrderItems, recurringOrders } from '@/lib/db/schema'
@@ -29,6 +29,7 @@ export const GET = withAuth<{ customerId: string }>(async (_req, { params, auth 
     })
     .from(recurringOrderItems)
     .where(eq(recurringOrderItems.recurringOrderId, recurring.id))
+    .orderBy(asc(recurringOrderItems.position))
 
   return NextResponse.json({
     id: recurring.id,
@@ -93,11 +94,12 @@ export const PUT = withAuth<{ customerId: string }>(
 
       if (body.items.length > 0) {
         await tx.insert(recurringOrderItems).values(
-          body.items.map((it) => ({
+          body.items.map((it, index) => ({
             recurringOrderId: recurringId,
             productId: it.productId,
             quantity: String(it.quantity),
             unit: it.unit,
+            position: index,
           })),
         )
       }

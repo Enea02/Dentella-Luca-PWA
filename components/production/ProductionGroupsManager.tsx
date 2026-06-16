@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useProductionGroups, useSections } from '@/hooks/useData'
+import { useDragReorder } from '@/hooks/useDragReorder'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { GripVertical, Pencil, Plus, Trash2, X, Check } from 'lucide-react'
@@ -28,11 +29,14 @@ export function ProductionGroupsManager({ onClose }: { onClose: () => void }) {
   const [editName, setEditName] = useState('')
   const [deleteGroup, setDeleteGroup] = useState<ProductionGroup | null>(null)
 
-  const dragId = useRef<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
-
   const sortedGroups = [...groups].sort((a, b) => a.order - b.order)
   const sortedSections = [...sections].sort((a, b) => a.order - b.order)
+
+  const { displayItems: orderedGroups, registerRow, dragHandleProps, draggingId } = useDragReorder(
+    sortedGroups,
+    (g) => g.id,
+    (ids) => reorder(ids),
+  )
 
   const handleCreate = async () => {
     const trimmed = newName.trim()
@@ -94,28 +98,6 @@ export function ProductionGroupsManager({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const handleDragStart = (id: string) => { dragId.current = id }
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault()
-    setDragOverId(id)
-  }
-  const handleDrop = async (targetId: string) => {
-    const sourceId = dragId.current
-    if (!sourceId || sourceId === targetId) {
-      setDragOverId(null)
-      return
-    }
-    const ids = sortedGroups.map(g => g.id)
-    const from = ids.indexOf(sourceId)
-    const to = ids.indexOf(targetId)
-    const reordered = [...ids]
-    reordered.splice(from, 1)
-    reordered.splice(to, 0, sourceId)
-    setDragOverId(null)
-    dragId.current = null
-    await reorder(reordered)
-  }
-
   return (
     <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 space-y-4">
       <div className="flex items-center justify-between">
@@ -152,22 +134,24 @@ export function ProductionGroupsManager({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {sortedGroups.map(group => (
+        {orderedGroups.map(group => (
           <div
             key={group.id}
-            draggable={editingId !== group.id}
-            onDragStart={() => handleDragStart(group.id)}
-            onDragOver={(e) => handleDragOver(e, group.id)}
-            onDragEnd={() => setDragOverId(null)}
-            onDrop={() => handleDrop(group.id)}
+            ref={registerRow(group.id)}
             className={cn(
               'rounded-2xl border-2 p-3 transition-colors',
-              dragOverId === group.id ? 'border-slate-400 bg-slate-50' : 'border-slate-200'
+              draggingId === group.id ? 'border-slate-400 bg-slate-50' : 'border-slate-200'
             )}
           >
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">
-              <GripVertical className="h-4 w-4 text-slate-300 cursor-grab active:cursor-grabbing shrink-0" />
+              <div
+                {...dragHandleProps(group.id)}
+                className="shrink-0 cursor-grab touch-none text-slate-300 active:cursor-grabbing"
+                aria-label="Trascina per riordinare"
+              >
+                <GripVertical className="h-4 w-4" />
+              </div>
               {editingId === group.id ? (
                 <>
                   <Input

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { can } from '@/lib/auth/permissions'
 import { useProducts } from '@/hooks/useData'
@@ -14,7 +14,6 @@ import { ProductPicker } from './ProductPicker'
 import { getOrderStatus } from '@/lib/utils'
 import { STATUS_COLORS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import { GripVertical } from 'lucide-react'
 
 interface DayOrderProps {
   order: ComputedDayOrder | null
@@ -23,7 +22,6 @@ interface DayOrderProps {
   onUpdateItemVariant?: (productId: string, variant: string) => Promise<void>
   onUpdateItem?: (productId: string, quantity: number, unit: 'pieces' | 'kg') => void
   onRemoveItem?: (productId: string) => void
-  onReorder?: (orderedProductIds: string[]) => void
 }
 
 export function DayOrder({
@@ -33,7 +31,6 @@ export function DayOrder({
   onUpdateItemVariant,
   onUpdateItem,
   onRemoveItem,
-  onReorder,
 }: DayOrderProps) {
   const { user } = useAuth()
   const canEdit = can(user, 'orders:edit')
@@ -44,9 +41,6 @@ export function DayOrder({
   const [qty, setQty] = useState('')
   const [variant, setVariant] = useState('')
   const [saving, setSaving] = useState(false)
-
-  const dragId = useRef<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const selectedProduct = products.find(p => p.id === selectedProductId)
   const showVariantInput = selectedProduct?.section === PIZZA_VARIANT_SECTION
@@ -71,30 +65,6 @@ export function DayOrder({
     }
   }
 
-  const handleDragStart = (productId: string) => {
-    dragId.current = productId
-  }
-
-  const handleDragOver = (e: React.DragEvent, productId: string) => {
-    e.preventDefault()
-    setDragOverId(productId)
-  }
-
-  const handleDrop = (targetId: string) => {
-    const sourceId = dragId.current
-    dragId.current = null
-    setDragOverId(null)
-    if (!order || !sourceId || sourceId === targetId || !onReorder) return
-    const ids = order.items.map((i) => i.productId)
-    const from = ids.indexOf(sourceId)
-    const to = ids.indexOf(targetId)
-    if (from === -1 || to === -1) return
-    const reordered = [...ids]
-    reordered.splice(from, 1)
-    reordered.splice(to, 0, sourceId)
-    onReorder(reordered)
-  }
-
   if (!order) {
     return (
       <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 text-center h-full flex items-center justify-center">
@@ -105,7 +75,9 @@ export function DayOrder({
 
   const status = getOrderStatus(order.items)
   const doneCount = order.items.filter(i => i.done).length
-  const canReorder = canEdit && !!onReorder && order.items.length > 1
+  // Display order: completed ("done"/green) items sink to the bottom, keeping the
+  // saved arrangement within each group (Array.prototype.sort is stable).
+  const displayItems = [...order.items].sort((a, b) => Number(a.done) - Number(b.done))
 
   return (
     <div className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden flex flex-col h-full">
@@ -130,12 +102,13 @@ export function DayOrder({
       {/* Items list */}
       <ScrollArea className="flex-1 h-[calc(100vh-350px)] md:h-[50vh]">
         <div className="p-3 space-y-2">
-          {order.items.map((item) => {
+          {displayItems.map((item) => {
             const product = products.find(p => p.id === item.productId)
 
             if (canEdit) {
-              const row = (
+              return (
                 <ProductLineOwner
+                  key={item.productId}
                   item={item}
                   product={product}
                   onToggle={(done) => onToggleItem(item.productId, done)}
@@ -153,35 +126,6 @@ export function DayOrder({
                     onRemoveItem ? () => onRemoveItem(item.productId) : undefined
                   }
                 />
-              )
-
-              if (!canReorder) {
-                return <div key={item.productId}>{row}</div>
-              }
-
-              return (
-                <div
-                  key={item.productId}
-                  onDragOver={(e) => handleDragOver(e, item.productId)}
-                  onDragEnd={() => { dragId.current = null; setDragOverId(null) }}
-                  onDrop={() => handleDrop(item.productId)}
-                  className={cn(
-                    'flex items-stretch gap-1 rounded-xl transition-colors',
-                    dragOverId === item.productId && dragId.current !== item.productId
-                      ? 'ring-2 ring-slate-400'
-                      : ''
-                  )}
-                >
-                  <div
-                    draggable
-                    onDragStart={() => handleDragStart(item.productId)}
-                    className="flex items-center px-0.5 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing touch-none shrink-0"
-                    aria-label="Trascina per riordinare"
-                  >
-                    <GripVertical className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">{row}</div>
-                </div>
               )
             }
 

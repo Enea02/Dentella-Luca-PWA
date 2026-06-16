@@ -7,7 +7,7 @@ import { DayOrder } from '@/components/orders/DayOrder'
 
 export default function OrdersPage() {
   const { selectedDate, selectedCustomerId } = useAppStore()
-  const { orders, isLoading, toggleItem, addItem, updateItem, removeItem, reorderItems } = useOrders(selectedDate)
+  const { orders, isLoading, toggleItem, addItem, updateItem, removeItem } = useOrders(selectedDate)
 
   const selectedOrder = orders.find(o => o.customerId === selectedCustomerId) || null
 
@@ -41,12 +41,6 @@ export default function OrdersPage() {
     }
   }
 
-  const handleReorder = async (orderedProductIds: string[]) => {
-    if (selectedCustomerId) {
-      await reorderItems(selectedCustomerId, orderedProductIds)
-    }
-  }
-
   return (
     <div className="grid gap-4 md:grid-cols-[300px_1fr] lg:grid-cols-[350px_1fr]">
       {/* Customer list (left column) */}
@@ -65,7 +59,6 @@ export default function OrdersPage() {
           onUpdateItemVariant={handleUpdateItemVariant}
           onUpdateItem={handleUpdateItem}
           onRemoveItem={handleRemoveItem}
-          onReorder={handleReorder}
         />
       </div>
     </div>

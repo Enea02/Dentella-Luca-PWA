@@ -256,25 +256,6 @@ export function useOrders(date: string) {
       await ordersApi.removeItem(date, customerId, productId)
       await mutate()
     },
-    reorderItems: async (customerId: string, orderedProductIds: string[]) => {
-      mutate(
-        (current) =>
-          current?.map((order) =>
-            order.customerId === customerId
-              ? {
-                  ...order,
-                  items: [...order.items].sort(
-                    (a, b) =>
-                      orderedProductIds.indexOf(a.productId) - orderedProductIds.indexOf(b.productId),
-                  ),
-                }
-              : order,
-          ),
-        false,
-      )
-      await ordersApi.reorderItems(date, customerId, orderedProductIds)
-      await mutate()
-    },
   }
 }
 
