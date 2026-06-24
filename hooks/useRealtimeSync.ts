@@ -38,6 +38,14 @@ export function useRealtimeSync() {
   const { mutate } = useSWRConfig()
 
   useEffect(() => {
+    // Realtime is opt-out via env. On serverless hosts (e.g. Vercel) the SSE
+    // function is killed at the max-duration timeout, so the client would
+    // reconnect every few seconds forever, leaking Postgres LISTEN connections
+    // and burning function invocations. Set NEXT_PUBLIC_REALTIME_DISABLED=1
+    // there to skip opening the EventSource entirely. Leave it unset when
+    // self-hosting (`next start`) and live sync works as before — no code edit.
+    if (process.env.NEXT_PUBLIC_REALTIME_DISABLED === '1') return
+
     let source: EventSource | null = null
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined
     let backoff = INITIAL_BACKOFF_MS
