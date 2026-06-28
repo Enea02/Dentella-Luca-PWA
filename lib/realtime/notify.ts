@@ -28,5 +28,14 @@ export interface RealtimeEvent {
  */
 export async function notify(bakeryId: string, event: RealtimeEvent): Promise<void> {
   const channel = `bakery:${bakeryId}`
-  await sql.notify(channel, JSON.stringify(event))
+  try {
+    await sql.notify(channel, JSON.stringify(event))
+  } catch (err) {
+    // Realtime is best-effort. This call always runs AFTER the DB transaction
+    // has committed, so a NOTIFY failure (e.g. pooler connection, exhausted
+    // connections, realtime misconfigured) must NEVER turn a successful save
+    // into a 500. Log and swallow — clients still converge via refreshInterval,
+    // local mutate() invalidation, or the next reconnect.
+    console.error('[realtime] notify failed (ignored):', err)
+  }
 }

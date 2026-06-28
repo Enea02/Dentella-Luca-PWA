@@ -14,7 +14,10 @@ import { dayOfWeek, getOrderStatus } from '@/lib/utils'
 import type { ComputedDayOrder, OrderItem } from '@/lib/types'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-const MAX_DAYS = 90
+// Up to a full year (with buffer for leap years / inclusive bounds), so the
+// statistics view can quantify a whole year of production — past or future.
+// Future dates for fixed customers are computed from the recurring templates.
+const MAX_DAYS = 367
 
 // Inclusive list of ISO dates from `from` to `to`, clamped to MAX_DAYS.
 function datesInRange(from: string, to: string): string[] {

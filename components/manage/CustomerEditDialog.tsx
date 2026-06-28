@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSWRConfig } from 'swr'
 import { useCustomers, useProducts, useSections } from '@/hooks/useData'
 import { useAuth } from '@/hooks/useAuth'
 import { useDragReorder } from '@/hooks/useDragReorder'
@@ -43,6 +44,7 @@ interface CustomerEditDialogProps {
 }
 
 export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId }: CustomerEditDialogProps) {
+  const { mutate: globalMutate } = useSWRConfig()
   const { create, update } = useCustomers()
   const { products } = useProducts()
   const { sections } = useSections()
@@ -201,6 +203,14 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
         }
         toast.success('Cliente aggiornato')
       }
+      // The recurring template + customer name/type feed the COMPUTED orders
+      // view and statistics. useCustomers.update already invalidates those, but
+      // upsertRecurringOrder runs afterwards, so invalidate once more here (after
+      // the template commit) — otherwise the orders view stays stale until the
+      // 30s refresh / realtime / a navigation. (Runs regardless of realtime.)
+      await globalMutate(
+        (key) => Array.isArray(key) && (key[0] === 'orders' || key[0] === 'statistics'),
+      )
       onClose()
     } catch {
       toast.error('Errore durante il salvataggio')

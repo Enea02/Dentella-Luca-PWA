@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { format, subDays } from 'date-fns'
+import { format, subDays, addDays } from 'date-fns'
 import { it } from 'date-fns/locale'
 import { ShieldAlert, Loader2, Calendar } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -15,12 +15,26 @@ import { Button } from '@/components/ui/button'
 
 const TODAY = format(new Date(), 'yyyy-MM-dd')
 
-type Preset = 'today' | 'week' | 'month' | 'custom'
+type Preset = 'today' | 'week' | 'month' | 'year' | 'yearAhead' | 'custom'
+
+// Selectable presets (excludes 'custom', which is driven by the date pickers).
+const PRESET_LABELS: Record<Exclude<Preset, 'custom'>, string> = {
+  today: 'Oggi',
+  week: 'Ultimi 7 giorni',
+  month: 'Ultimi 30 giorni',
+  year: 'Ultimo anno',
+  yearAhead: 'Prossimo anno',
+}
+const PRESET_ORDER = Object.keys(PRESET_LABELS) as Exclude<Preset, 'custom'>[]
 
 function presetRange(preset: Preset): { from: string; to: string } {
   const today = new Date()
   if (preset === 'today') return { from: TODAY, to: TODAY }
   if (preset === 'week') return { from: format(subDays(today, 6), 'yyyy-MM-dd'), to: TODAY }
+  if (preset === 'year') return { from: format(subDays(today, 364), 'yyyy-MM-dd'), to: TODAY }
+  // Future year: today → +364 days (recurring templates project fixed customers forward).
+  if (preset === 'yearAhead') return { from: TODAY, to: format(addDays(today, 364), 'yyyy-MM-dd') }
+  // 'month' (and any fallback)
   return { from: format(subDays(today, 29), 'yyyy-MM-dd'), to: TODAY }
 }
 
@@ -281,7 +295,7 @@ export default function StatisticsPage() {
       {/* Date range filter */}
       <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 mb-4">
         <div className="flex flex-wrap items-center gap-2">
-          {(['today', 'week', 'month'] as const).map((p) => (
+          {PRESET_ORDER.map((p) => (
             <button
               key={p}
               type="button"
@@ -292,7 +306,7 @@ export default function StatisticsPage() {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {p === 'today' ? 'Oggi' : p === 'week' ? 'Ultimi 7 giorni' : 'Ultimi 30 giorni'}
+              {PRESET_LABELS[p]}
             </button>
           ))}
 

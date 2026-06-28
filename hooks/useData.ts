@@ -1,9 +1,20 @@
 'use client'
 
 import { useMemo } from 'react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi, sectionsApi, productionGroupsApi, getOrdersForRange } from '@/lib/api'
 import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, ProductionGroup, Role, SectionDef, User } from '@/lib/types'
+
+// ---- Cross-key SWR invalidation matchers ----
+// Some entities feed *derived* views: orders for fixed customers are COMPUTED
+// from recurring templates + customer state, and statistics aggregate orders.
+// A mutation on the source entity must invalidate those derived keys too,
+// otherwise the dependent view stays stale until realtime / the 30s refresh /
+// a reload. We can't rely on realtime alone (it's disabled on serverless).
+const isOrdersKey = (key: unknown) => Array.isArray(key) && key[0] === 'orders'
+const isStatsKey = (key: unknown) => Array.isArray(key) && key[0] === 'statistics'
+const isOrdersOrStatsKey = (key: unknown) =>
+  Array.isArray(key) && (key[0] === 'orders' || key[0] === 'statistics')
 
 // Statistics types
 export interface CustomerStat {
@@ -156,6 +167,7 @@ export function useProducts() {
 
 // Customers hook
 export function useCustomers() {
+  const { mutate: globalMutate } = useSWRConfig()
   const { data, error, isLoading, mutate } = useSWR<Customer[]>(
     'customers',
     () => customersApi.list(),
@@ -175,22 +187,29 @@ export function useCustomers() {
     update: async (id: string, updates: Partial<Customer>) => {
       const updated = await customersApi.update(id, updates)
       await mutate()
+      // name/type/active feed the computed orders view + statistics.
+      await globalMutate(isOrdersOrStatsKey)
       return updated
     },
     remove: async (id: string) => {
       await customersApi.delete(id)
       await mutate()
+      await globalMutate(isOrdersOrStatsKey)
     },
   }
 }
 
 // Orders hook (for a specific date)
 export function useOrders(date: string) {
+  const { mutate: globalMutate } = useSWRConfig()
   const { data, error, isLoading, mutate } = useSWR<ComputedDayOrder[]>(
     date ? ['orders', date] : null,
     () => ordersApi.getForDate(date),
     { dedupingInterval: 5_000, refreshInterval: 30_000, keepPreviousData: true }
   )
+
+  // Any order change feeds the statistics aggregates for loaded ranges.
+  const revalidateStats = () => globalMutate(isStatsKey)
 
   return {
     orders: data ?? [],
@@ -200,10 +219,12 @@ export function useOrders(date: string) {
     createOrder: async (customerId: string, items: OrderItem[]) => {
       await createDailyOrder(date, customerId, items)
       await mutate()
+      await revalidateStats()
     },
     addItem: async (customerId: string, item: OrderItem) => {
       await addOrderItem(date, customerId, item)
       await mutate()
+      await revalidateStats()
     },
     toggleItem: async (customerId: string, productId: string, done: boolean) => {
       // Optimistic update
@@ -223,6 +244,7 @@ export function useOrders(date: string) {
       )
       await ordersApi.toggleItem(date, customerId, productId, done)
       await mutate()
+      await revalidateStats()
     },
     updateItem: async (customerId: string, productId: string, updates: Partial<OrderItem>) => {
       // Optimistic update
@@ -242,6 +264,7 @@ export function useOrders(date: string) {
       )
       await ordersApi.updateItem(date, customerId, productId, updates)
       await mutate()
+      await revalidateStats()
     },
     removeItem: async (customerId: string, productId: string) => {
       mutate(
@@ -255,6 +278,7 @@ export function useOrders(date: string) {
       )
       await ordersApi.removeItem(date, customerId, productId)
       await mutate()
+      await revalidateStats()
     },
   }
 }
@@ -362,6 +386,7 @@ export function useStatistics(from: string, to: string) {
 
 // Sections hook
 export function useSections() {
+  const { mutate: globalMutate } = useSWRConfig()
   const { data, isLoading, mutate } = useSWR<SectionDef[]>(
     'sections',
     () => sectionsApi.list(),
@@ -379,10 +404,13 @@ export function useSections() {
     rename: async (id: string, name: string) => {
       await sectionsApi.rename(id, name)
       await mutate()
+      // The products list shows each product's section name.
+      await globalMutate('products')
     },
     remove: async (id: string) => {
       await sectionsApi.delete(id)
       await mutate()
+      await globalMutate('products')
     },
     reorder: async (orderedIds: string[]) => {
       await sectionsApi.reorder(orderedIds)
