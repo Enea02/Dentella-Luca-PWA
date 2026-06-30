@@ -108,7 +108,7 @@ export function DayOrder({
             if (canEdit) {
               return (
                 <ProductLineOwner
-                  key={item.productId}
+                  key={`${order.customerId}-${item.productId}`}
                   item={item}
                   product={product}
                   onToggle={(done) => onToggleItem(item.productId, done)}
@@ -131,7 +131,7 @@ export function DayOrder({
 
             return (
               <ProductLineStaff
-                key={item.productId}
+                key={`${order.customerId}-${item.productId}`}
                 item={item}
                 product={product}
                 onToggle={(done) => onToggleItem(item.productId, done)}

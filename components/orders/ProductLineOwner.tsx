@@ -22,6 +22,10 @@ export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVa
   const [quantity, setQuantity] = useState(item.quantity.toString())
   const [variant, setVariant] = useState(item.variant ?? '')
 
+  // Keep the local input in sync with the data. Without this, React reuses this
+  // component instance for products shared across customers (same productId key),
+  // and the quantity field keeps showing the previously-viewed customer's value.
+  useEffect(() => { setQuantity(item.quantity.toString()) }, [item.quantity])
   useEffect(() => { setVariant(item.variant ?? '') }, [item.variant])
 
   const isPizza = product?.section === PIZZA_VARIANT_SECTION
