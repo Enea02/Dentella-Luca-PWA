@@ -1,7 +1,7 @@
 # Termini e Condizioni d'uso
 
 **Ultimo aggiornamento:** «GG/MM/AAAA»
-**Applicazione:** «Nome dell'applicazione» — gestionale per panificio
+**Applicazione:** DENTELLA-LUCA-PWA — gestionale per panificio
 
 > ⚠️ **Nota.** Bozza non costituente consulenza legale. Far validare da un professionista prima dell'adozione.
 
@@ -9,9 +9,9 @@
 
 ## 1. Oggetto e ambito di applicazione
 
-I presenti Termini e Condizioni (“Termini”) disciplinano l'accesso e l'utilizzo dell'applicazione web/PWA «Nome dell'applicazione» (di seguito l'“Applicazione”), un gestionale ad uso interno destinato alla gestione di ordini, produzione, anagrafica clienti e statistiche di un panificio.
+I presenti Termini e Condizioni (“Termini”) disciplinano l'accesso e l'utilizzo dell'applicazione web/PWA DENTELLA-LUCA-PWA (di seguito l'“Applicazione”), un gestionale ad uso interno destinato alla gestione di Pesatura, anagrafica clienti e statistiche di un panificio.
 
-L'Applicazione è messa a disposizione da «Ragione sociale / soggetto che fornisce l'app» (di seguito il “Fornitore” o il “Titolare”) ed è riservata agli utenti autorizzati (titolare, amministratore e personale del panificio, di seguito gli “Utenti”).
+L'Applicazione è messa a disposizione da Enea Frontera (di seguito il “Fornitore” o il “Titolare”) ed è riservata agli utenti autorizzati (titolare, amministratore e personale del panificio, di seguito gli “Utenti”).
 
 L'accesso e l'uso dell'Applicazione comportano l'accettazione integrale dei presenti Termini. L'Utente che non li accetti è tenuto a non utilizzare l'Applicazione.
 
@@ -50,7 +50,7 @@ L'Utente si impegna a utilizzare l'Applicazione:
 
 ## 5. Proprietà intellettuale
 
-L'Applicazione, il relativo codice sorgente, la struttura, le interfacce, i marchi e i contenuti sono di titolarità di «titolare dei diritti» e sono protetti dalle norme a tutela della proprietà intellettuale. Nessuna disposizione dei presenti Termini trasferisce all'Utente diritti di proprietà intellettuale: all'Utente è concesso un diritto d'uso **limitato, non esclusivo, non trasferibile e revocabile**, per le sole finalità di cui sopra.
+L'Applicazione, il relativo codice sorgente, la struttura, le interfacce, i marchi e i contenuti sono di titolarità di Enea Frontera e sono protetti dalle norme a tutela della proprietà intellettuale. Nessuna disposizione dei presenti Termini trasferisce all'Utente diritti di proprietà intellettuale: all'Utente è concesso un diritto d'uso **limitato, non esclusivo, non trasferibile e revocabile**, per le sole finalità di cui sopra.
 
 I **dati inseriti** (anagrafiche, ordini, ecc.) restano di titolarità del panificio/Titolare del trattamento.
 
@@ -60,7 +60,7 @@ I **dati inseriti** (anagrafiche, ordini, ecc.) restano di titolarità del panif
 
 1. Il Titolare si adopera per garantire la disponibilità e il corretto funzionamento dell'Applicazione, **senza tuttavia garantirne il funzionamento ininterrotto o privo di errori**.
 2. Il servizio può essere sospeso, in tutto o in parte, per manutenzione, aggiornamenti, ragioni tecniche o di sicurezza, ovvero per cause non imputabili al Titolare (es. malfunzionamenti di fornitori terzi, connettività, forza maggiore).
-3. L'Applicazione include funzionalità offline (PWA) che memorizzano dati localmente sul dispositivo; tali dati potrebbero non risultare sempre allineati con quelli del server.
+
 
 ---
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -107,6 +108,19 @@ export default function LoginPage() {
               <LoginForm />
             </Suspense>
           </AuthProvider>
+          <p className="mt-6 flex flex-wrap justify-center gap-x-3 gap-y-1 text-center text-xs text-slate-400">
+            <Link href="/privacy" className="hover:text-slate-600 hover:underline">
+              Privacy
+            </Link>
+            <span aria-hidden>·</span>
+            <Link href="/cookie-policy" className="hover:text-slate-600 hover:underline">
+              Cookie Policy
+            </Link>
+            <span aria-hidden>·</span>
+            <Link href="/termini" className="hover:text-slate-600 hover:underline">
+              Termini
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>

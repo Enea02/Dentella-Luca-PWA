@@ -1,7 +1,7 @@
 # Disclaimer e Limitazione di responsabilità
 
 **Ultimo aggiornamento:** «GG/MM/AAAA»
-**Applicazione:** «Nome dell'applicazione» — gestionale per panificio
+**Applicazione:** DENTELLA-Luca-PWA — gestionale per panificio
 
 > ⚠️ **Nota.** Bozza non costituente consulenza legale. Far validare da un professionista prima dell'adozione.
 
@@ -9,7 +9,7 @@
 
 ## 1. Premessa
 
-Il presente disclaimer disciplina i limiti di garanzia e di responsabilità relativi all'utilizzo dell'applicazione «Nome dell'applicazione» (l'“Applicazione”), fornita da «Ragione sociale / Fornitore» (il “Fornitore”). Esso integra i [Termini e Condizioni d'uso](termini-e-condizioni.md).
+Il presente disclaimer disciplina i limiti di garanzia e di responsabilità relativi all'utilizzo dell'applicazione DENTELLA-Luca-PWA(l'“Applicazione”), fornita da «Ragione sociale / Fornitore» (il “Fornitore”). Esso integra i [Termini e Condizioni d'uso](termini-e-condizioni.md).
 
 ---
 
@@ -25,15 +25,10 @@ L'Applicazione è fornita **“così com'è” (“as is”) e “come disponibi
 
 ## 3. Affidabilità dei dati e delle elaborazioni
 
-L'Applicazione elabora ordini, quantità, totali di produzione e statistiche sulla base dei dati inseriti dagli Utenti. Tali risultati hanno **finalità di supporto gestionale** e **non sostituiscono** le verifiche, le valutazioni e le decisioni dell'Utente.
+L'Applicazione elabora quantità, totali di produzione e statistiche sulla base dei dati inseriti dagli Utenti. Tali risultati hanno **finalità di supporto gestionale** e **non sostituiscono** le verifiche, le valutazioni e le decisioni dell'Utente.
 
 L'Utente è tenuto a **verificare l'esattezza** dei dati e delle elaborazioni prima di assumere decisioni operative, produttive o commerciali. Il Fornitore non risponde di scelte assunte sulla base di dati errati, incompleti o non aggiornati.
 
----
-
-## 4. Funzionalità offline (PWA)
-
-L'Applicazione può funzionare in modalità offline memorizzando dati localmente sul dispositivo. In tali condizioni i dati visualizzati **potrebbero non essere allineati** con quelli aggiornati sul server. Il Fornitore non garantisce la sincronizzazione in tempo reale e non risponde di disallineamenti o perdite di dati derivanti dall'uso offline o da malfunzionamenti del dispositivo dell'Utente.
 
 ---
 
