@@ -25,7 +25,11 @@ export function CustomerList({ orders, isLoading }: CustomerListProps) {
 
   const sortedOrders = sortByStatus(
     orders.map(order => ({ ...order, status: getOrderStatus(order.items) }))
-  ).filter(order => order.customerName.toLowerCase().includes(search.toLowerCase()))
+  )
+    // Hide orders with no items: a fixed customer "emptied" for the day (B1) has an
+    // empty daily-order override and must disappear from the list for that date.
+    .filter(order => order.items.length > 0)
+    .filter(order => order.customerName.toLowerCase().includes(search.toLowerCase()))
 
   const handleCreateOrder = async (customerId: string, items: OrderItem[]) => {
     await createOrder(customerId, items)

@@ -11,6 +11,7 @@ import {
 } from '@/lib/db/schema'
 import { withAuth, jsonWithCache } from '@/lib/api/handler'
 import { dayOfWeek, getOrderStatus } from '@/lib/utils'
+import { effectiveRecurringItems, type RawRecurringItem } from '@/lib/orders/recurring'
 import type { ComputedDayOrder, OrderItem } from '@/lib/types'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -100,6 +101,8 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
             quantity: recurringOrderItems.quantity,
             unit: recurringOrderItems.unit,
             position: recurringOrderItems.position,
+            weekday: recurringOrderItems.weekday,
+            removed: recurringOrderItems.removed,
           })
           .from(recurringOrderItems)
           .where(
@@ -111,11 +114,20 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
           .orderBy(asc(recurringOrderItems.position))
       : []
 
-  const recItemsByOrder = new Map<string, typeof recItems>()
+  // Raw template rows grouped per recurring order; resolved to the effective set
+  // per date's weekday below (base rows + per-weekday overrides).
+  const rawByOrder = new Map<string, RawRecurringItem[]>()
   for (const it of recItems) {
-    const arr = recItemsByOrder.get(it.recurringOrderId) ?? []
-    arr.push(it)
-    recItemsByOrder.set(it.recurringOrderId, arr)
+    const arr = rawByOrder.get(it.recurringOrderId) ?? []
+    arr.push({
+      productId: it.productId,
+      quantity: Number(it.quantity),
+      unit: it.unit,
+      position: it.position,
+      weekday: it.weekday,
+      removed: it.removed,
+    })
+    rawByOrder.set(it.recurringOrderId, arr)
   }
 
   // Daily order items keyed by daily order id (one fetch for the whole range).
@@ -178,16 +190,18 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
     for (const r of activeRecurring) {
       const customer = customerById.get(r.customerId)
       if (!customer) continue
-      const items: OrderItem[] = (recItemsByOrder.get(r.id) ?? []).map((it) => {
-        const status = statusByKey.get(`${date}|${r.customerId}|${it.productId}`)
-        return {
-          productId: it.productId,
-          quantity: Number(it.quantity),
-          unit: it.unit,
-          done: status?.done ?? false,
-          ...(status?.variant != null ? { variant: status.variant } : {}),
-        }
-      })
+      const items: OrderItem[] = effectiveRecurringItems(rawByOrder.get(r.id) ?? [], weekday).map(
+        (it) => {
+          const status = statusByKey.get(`${date}|${r.customerId}|${it.productId}`)
+          return {
+            productId: it.productId,
+            quantity: it.quantity,
+            unit: it.unit,
+            done: status?.done ?? false,
+            ...(status?.variant != null ? { variant: status.variant } : {}),
+          }
+        },
+      )
       orderMap.set(r.customerId, {
         customerId: r.customerId,
         customerName: customer.name,

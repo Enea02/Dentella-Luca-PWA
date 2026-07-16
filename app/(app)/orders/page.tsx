@@ -6,8 +6,8 @@ import { CustomerList } from '@/components/orders/CustomerList'
 import { DayOrder } from '@/components/orders/DayOrder'
 
 export default function OrdersPage() {
-  const { selectedDate, selectedCustomerId } = useAppStore()
-  const { orders, isLoading, toggleItem, addItem, updateItem, removeItem } = useOrders(selectedDate)
+  const { selectedDate, selectedCustomerId, setSelectedCustomerId } = useAppStore()
+  const { orders, isLoading, toggleItem, addItem, updateItem, removeItem, clearOrder } = useOrders(selectedDate)
 
   const selectedOrder = orders.find(o => o.customerId === selectedCustomerId) || null
 
@@ -41,6 +41,14 @@ export default function OrdersPage() {
     }
   }
 
+  const handleClearOrder = async () => {
+    if (selectedCustomerId) {
+      await clearOrder(selectedCustomerId)
+      // The customer is now hidden from the list (0 items); reset the detail pane.
+      setSelectedCustomerId(null)
+    }
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-[300px_1fr] lg:grid-cols-[350px_1fr]">
       {/* Customer list (left column) */}
@@ -59,6 +67,7 @@ export default function OrdersPage() {
           onUpdateItemVariant={handleUpdateItemVariant}
           onUpdateItem={handleUpdateItem}
           onRemoveItem={handleRemoveItem}
+          onClearOrder={handleClearOrder}
         />
       </div>
     </div>

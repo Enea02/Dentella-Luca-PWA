@@ -11,6 +11,7 @@ const UpdateSchema = z.object({
   section: z.string().trim().min(1).optional(),
   unit: z.enum(['pieces', 'kg']).optional(),
   piecesPerKg: z.number().int().positive().nullable().optional(),
+  additionsWatch: z.boolean().optional(),
 })
 
 export const PATCH = withAuth<{ id: string }>(
@@ -22,6 +23,7 @@ export const PATCH = withAuth<{ id: string }>(
     if (body.name !== undefined) patch.name = body.name
     if (body.unit !== undefined) patch.unit = body.unit
     if (body.piecesPerKg !== undefined) patch.piecesPerKg = body.piecesPerKg
+    if (body.additionsWatch !== undefined) patch.additionsWatch = body.additionsWatch
 
     if (body.section !== undefined) {
       const [section] = await db
@@ -43,6 +45,7 @@ export const PATCH = withAuth<{ id: string }>(
         sectionId: products.sectionId,
         unit: products.unit,
         piecesPerKg: products.piecesPerKg,
+        additionsWatch: products.additionsWatch,
       })
 
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })

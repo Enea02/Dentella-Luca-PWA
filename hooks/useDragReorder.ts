@@ -54,6 +54,16 @@ export function useDragReorder<T>(
     return null
   }
 
+  // While dragging with a mouse (desktop), a plain pointerdown still starts a native
+  // text selection that visually "wins" and makes the reorder feel broken (rows get
+  // highlighted, nothing moves). preventDefault() on pointerdown isn't enough across
+  // browsers, so we suppress selection on <body> for the duration of the drag.
+  const setBodySelect = (enabled: boolean) => {
+    if (typeof document !== 'undefined') {
+      document.body.style.userSelect = enabled ? '' : 'none'
+    }
+  }
+
   const dragHandleProps = (id: string) => ({
     onPointerDown: (e: React.PointerEvent) => {
       e.preventDefault()
@@ -61,6 +71,7 @@ export function useDragReorder<T>(
       orderRef.current = baseIds
       setDraggingId(id)
       setOrderOverride(baseIds)
+      setBodySelect(false)
       e.currentTarget.setPointerCapture(e.pointerId)
     },
     onPointerMove: (e: React.PointerEvent) => {
@@ -82,6 +93,7 @@ export function useDragReorder<T>(
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId)
       }
+      setBodySelect(true)
       const dragging = dragIdRef.current
       const finalOrder = orderRef.current
       dragIdRef.current = null
@@ -96,6 +108,7 @@ export function useDragReorder<T>(
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId)
       }
+      setBodySelect(true)
       dragIdRef.current = null
       orderRef.current = null
       setDraggingId(null)

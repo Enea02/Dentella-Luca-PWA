@@ -6,7 +6,10 @@ import type {
   OrderItem,
   Product,
   ProductionGroup,
+  RecurringBaseItem,
+  RecurringBaseTotal,
   RecurringOrder,
+  RecurringOverrideItem,
   SectionDef,
   User,
   Weekday,
@@ -91,17 +94,20 @@ export async function getCustomerRecurringOrder(customerId: string): Promise<Rec
   return fetchApi<RecurringOrder | null>(`/orders/recurring/${customerId}`)
 }
 
+// Baseline (recurring template totals, in pieces) for the "Aggiunte" board.
+export async function getRecurringBase(date: string): Promise<RecurringBaseTotal[]> {
+  return fetchRequired<RecurringBaseTotal[]>(`/orders/recurring-base?date=${date}`)
+}
+
 export async function upsertRecurringOrder(
   customerId: string,
   weekdays: Weekday[],
-  items: OrderItem[],
+  base: RecurringBaseItem[],
+  overrides: Record<number, RecurringOverrideItem[]>,
 ): Promise<void> {
   await fetchApi(`/orders/recurring/${customerId}`, {
     method: 'PUT',
-    body: JSON.stringify({
-      weekdays,
-      items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, unit: i.unit })),
-    }),
+    body: JSON.stringify({ weekdays, base, overrides }),
   })
 }
 
@@ -120,6 +126,14 @@ export async function addOrderItem(date: string, customerId: string, item: Order
   await fetchApi('/orders/items', {
     method: 'POST',
     body: JSON.stringify({ date, customerId, item }),
+  })
+}
+
+// Clear a customer's whole order for a date in one action (see DELETE /api/orders/daily).
+export async function clearDailyOrder(date: string, customerId: string): Promise<void> {
+  await fetchApi('/orders/daily', {
+    method: 'DELETE',
+    body: JSON.stringify({ date, customerId }),
   })
 }
 

@@ -15,6 +15,7 @@ export const GET = withAuth(async (_req, { auth }) => {
       sectionId: products.sectionId,
       unit: products.unit,
       piecesPerKg: products.piecesPerKg,
+      additionsWatch: products.additionsWatch,
     })
     .from(products)
     .innerJoin(sections, eq(sections.id, products.sectionId))
@@ -57,6 +58,7 @@ export const POST = withAuth(
         sectionId: products.sectionId,
         unit: products.unit,
         piecesPerKg: products.piecesPerKg,
+        additionsWatch: products.additionsWatch,
       })
 
     await notify(auth.bakeryId, { type: 'products.updated' })

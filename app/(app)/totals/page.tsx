@@ -3,6 +3,7 @@
 import { useOrders, useProducts, useDivisors, useSections } from '@/hooks/useData'
 import { useAppStore } from '@/lib/store'
 import { TotalsSection } from '@/components/totals/TotalsSection'
+import { AdditionsBoard } from '@/components/totals/AdditionsBoard'
 import { Loader2 } from 'lucide-react'
 
 export default function TotalsPage() {
@@ -30,6 +31,8 @@ export default function TotalsPage() {
       <h1 className="text-lg font-semibold text-slate-900 mb-4">Totali del giorno</h1>
       
       <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 space-y-4">
+        <AdditionsBoard date={selectedDate} orderItems={allItems} />
+
         {[...sections].sort((a, b) => a.order - b.order).map(s => (
           <TotalsSection
             key={s.id}

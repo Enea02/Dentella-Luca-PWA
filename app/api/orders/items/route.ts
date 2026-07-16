@@ -12,6 +12,7 @@ import {
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
 import { dayOfWeek } from '@/lib/utils'
+import { effectiveRecurringItems, type RawRecurringItem } from '@/lib/orders/recurring'
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
@@ -59,17 +60,31 @@ async function getOrCreateDailyOrder(
     .limit(1)
 
   if (recurring && (recurring.weekdays ?? []).includes(weekday)) {
-    const recItems = await tx
+    const rawRows = await tx
       .select({
         productId: recurringOrderItems.productId,
         quantity: recurringOrderItems.quantity,
         unit: recurringOrderItems.unit,
+        position: recurringOrderItems.position,
+        weekday: recurringOrderItems.weekday,
+        removed: recurringOrderItems.removed,
       })
       .from(recurringOrderItems)
       .where(eq(recurringOrderItems.recurringOrderId, recurring.id))
       .orderBy(asc(recurringOrderItems.position))
 
-    if (recItems.length > 0) {
+    // Resolve base + per-weekday overrides into the effective set for this date.
+    const recItems: RawRecurringItem[] = rawRows.map((it) => ({
+      productId: it.productId,
+      quantity: Number(it.quantity),
+      unit: it.unit,
+      position: it.position,
+      weekday: it.weekday,
+      removed: it.removed,
+    }))
+    const effective = effectiveRecurringItems(recItems, weekday)
+
+    if (effective.length > 0) {
       // Carry over per-day done/variant overrides so they survive materialization.
       const statusRows = await tx
         .select({
@@ -87,20 +102,26 @@ async function getOrCreateDailyOrder(
         )
       const statusByProduct = new Map(statusRows.map((s) => [s.productId, s]))
 
-      await tx.insert(dailyOrderItems).values(
-        recItems.map((it, i) => {
-          const s = statusByProduct.get(it.productId)
-          return {
-            dailyOrderId: dailyId,
-            productId: it.productId,
-            quantity: it.quantity,
-            unit: it.unit,
-            done: s?.done ?? false,
-            variant: s?.variant ?? null,
-            position: i,
-          }
-        }),
-      )
+      await tx
+        .insert(dailyOrderItems)
+        .values(
+          effective.map((it, i) => {
+            const s = statusByProduct.get(it.productId)
+            return {
+              dailyOrderId: dailyId,
+              productId: it.productId,
+              quantity: String(it.quantity),
+              unit: it.unit,
+              done: s?.done ?? false,
+              variant: s?.variant ?? null,
+              position: i,
+            }
+          }),
+        )
+        // A malformed template with the same product twice must not break seeding.
+        .onConflictDoNothing({
+          target: [dailyOrderItems.dailyOrderId, dailyOrderItems.productId],
+        })
 
       // The daily order now governs this date for this customer.
       await tx
@@ -144,15 +165,29 @@ export const POST = withAuth(
         .orderBy(desc(dailyOrderItems.position))
         .limit(1)
       const nextPosition = last ? last.position + 1 : 0
-      await tx.insert(dailyOrderItems).values({
-        dailyOrderId: dailyId,
-        productId: item.productId,
-        quantity: String(item.quantity),
-        unit: item.unit,
-        done: item.done ?? false,
-        variant: item.variant ?? null,
-        position: nextPosition,
-      })
+      // Upsert: if the product is already on this daily order (e.g. seeded from the
+      // recurring template by getOrCreateDailyOrder), update it instead of appending a
+      // second row. The unique (dailyOrderId, productId) constraint guarantees no dupes.
+      await tx
+        .insert(dailyOrderItems)
+        .values({
+          dailyOrderId: dailyId,
+          productId: item.productId,
+          quantity: String(item.quantity),
+          unit: item.unit,
+          done: item.done ?? false,
+          variant: item.variant ?? null,
+          position: nextPosition,
+        })
+        .onConflictDoUpdate({
+          target: [dailyOrderItems.dailyOrderId, dailyOrderItems.productId],
+          set: {
+            quantity: String(item.quantity),
+            unit: item.unit,
+            done: item.done ?? false,
+            variant: item.variant ?? null,
+          },
+        })
     })
 
     await notify(auth.bakeryId, { type: 'orders.updated', date })
@@ -204,14 +239,21 @@ export const PATCH = withAuth(
 
         if (updated.length === 0) {
           // Product wasn't part of the (materialized) daily order — add it.
-          await tx.insert(dailyOrderItems).values({
-            dailyOrderId: dailyId,
-            productId,
-            quantity: updates.quantity !== undefined ? String(updates.quantity) : '1',
-            unit: updates.unit ?? 'pieces',
-            done: updates.done ?? false,
-            variant: updates.variant ?? null,
-          })
+          // Upsert-guard against the unique (dailyOrderId, productId) constraint.
+          await tx
+            .insert(dailyOrderItems)
+            .values({
+              dailyOrderId: dailyId,
+              productId,
+              quantity: updates.quantity !== undefined ? String(updates.quantity) : '1',
+              unit: updates.unit ?? 'pieces',
+              done: updates.done ?? false,
+              variant: updates.variant ?? null,
+            })
+            .onConflictDoUpdate({
+              target: [dailyOrderItems.dailyOrderId, dailyOrderItems.productId],
+              set: buildPatch(),
+            })
         }
       })
       await notify(auth.bakeryId, { type: 'orders.updated', date })

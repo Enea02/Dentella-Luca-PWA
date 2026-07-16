@@ -34,9 +34,11 @@ export function TopNav() {
   const canManage =
     can(user, 'customers:write') || can(user, 'products:write') || can(user, 'permissions:manage')
   const canStats = can(user, 'statistics:view')
+  const canEditOrders = can(user, 'orders:edit')
 
   const allLinks = [
     ...navLinks,
+    ...(canEditOrders ? [{ href: '/sheet', label: 'Foglio' }] : []),
     ...(canManage ? [{ href: '/manage', label: 'Gestione' }] : []),
     ...(canStats ? [{ href: '/statistics', label: 'Statistiche' }] : []),
   ]

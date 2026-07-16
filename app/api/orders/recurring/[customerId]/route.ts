@@ -21,38 +21,58 @@ export const GET = withAuth<{ customerId: string }>(async (_req, { params, auth 
 
   if (!recurring) return NextResponse.json(null)
 
-  const items = await db
+  const rows = await db
     .select({
       productId: recurringOrderItems.productId,
       quantity: recurringOrderItems.quantity,
       unit: recurringOrderItems.unit,
+      weekday: recurringOrderItems.weekday,
+      removed: recurringOrderItems.removed,
     })
     .from(recurringOrderItems)
     .where(eq(recurringOrderItems.recurringOrderId, recurring.id))
     .orderBy(asc(recurringOrderItems.position))
 
+  // Split base rows (weekday null) from per-weekday override rows.
+  const base = rows
+    .filter((r) => r.weekday === null)
+    .map((r) => ({ productId: r.productId, quantity: Number(r.quantity), unit: r.unit }))
+
+  const overrides: Record<number, { productId: string; quantity: number; unit: 'pieces' | 'kg'; removed: boolean }[]> = {}
+  for (const r of rows) {
+    if (r.weekday === null) continue
+    ;(overrides[r.weekday] ??= []).push({
+      productId: r.productId,
+      quantity: Number(r.quantity),
+      unit: r.unit,
+      removed: r.removed,
+    })
+  }
+
   return NextResponse.json({
     id: recurring.id,
     customerId: recurring.customerId,
     weekdays: recurring.weekdays ?? [],
-    items: items.map((it) => ({
-      productId: it.productId,
-      quantity: Number(it.quantity),
-      unit: it.unit,
-      done: false,
-    })),
+    base,
+    overrides,
   })
+})
+
+const BaseItemSchema = z.object({
+  productId: z.string().uuid(),
+  quantity: z.number().positive(),
+  unit: z.enum(['pieces', 'kg']),
+})
+
+const OverrideItemSchema = BaseItemSchema.extend({
+  removed: z.boolean().optional().default(false),
 })
 
 const PutSchema = z.object({
   weekdays: z.array(z.number().int().min(1).max(7)),
-  items: z.array(
-    z.object({
-      productId: z.string().uuid(),
-      quantity: z.number().positive(),
-      unit: z.enum(['pieces', 'kg']),
-    }),
-  ),
+  base: z.array(BaseItemSchema),
+  // Keyed by weekday ("1".."7"); JSON object keys are strings.
+  overrides: z.record(z.string().regex(/^[1-7]$/), z.array(OverrideItemSchema)).optional().default({}),
 })
 
 export const PUT = withAuth<{ customerId: string }>(
@@ -92,16 +112,49 @@ export const PUT = withAuth<{ customerId: string }>(
         recurringId = created.id
       }
 
-      if (body.items.length > 0) {
-        await tx.insert(recurringOrderItems).values(
-          body.items.map((it, index) => ({
+      // Build the flat row set: base rows first (position 0..b-1, weekday null), then
+      // per-weekday override rows (positions continue after base so added-for-day items
+      // sort below the base list). Overridden base products keep their base position at
+      // read time (see lib/orders/recurring.ts).
+      const values: {
+        recurringOrderId: string
+        productId: string
+        quantity: string
+        unit: 'pieces' | 'kg'
+        position: number
+        weekday: number | null
+        removed: boolean
+      }[] = []
+
+      let position = 0
+      for (const it of body.base) {
+        values.push({
+          recurringOrderId: recurringId,
+          productId: it.productId,
+          quantity: String(it.quantity),
+          unit: it.unit,
+          position: position++,
+          weekday: null,
+          removed: false,
+        })
+      }
+      for (const [wdStr, items] of Object.entries(body.overrides ?? {})) {
+        const weekday = Number(wdStr)
+        for (const it of items) {
+          values.push({
             recurringOrderId: recurringId,
             productId: it.productId,
             quantity: String(it.quantity),
             unit: it.unit,
-            position: index,
-          })),
-        )
+            position: position++,
+            weekday,
+            removed: it.removed ?? false,
+          })
+        }
+      }
+
+      if (values.length > 0) {
+        await tx.insert(recurringOrderItems).values(values)
       }
     })
 

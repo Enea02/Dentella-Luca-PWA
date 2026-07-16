@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, bakeryApi, usersApi, sectionsApi, productionGroupsApi, getOrdersForRange } from '@/lib/api'
-import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, ProductionGroup, Role, SectionDef, User } from '@/lib/types'
+import { productsApi, customersApi, ordersApi, divisorsApi, createDailyOrder, addOrderItem, clearDailyOrder, bakeryApi, usersApi, sectionsApi, productionGroupsApi, getOrdersForRange, getRecurringBase } from '@/lib/api'
+import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, ProductionGroup, RecurringBaseTotal, Role, SectionDef, User } from '@/lib/types'
 
 // ---- Cross-key SWR invalidation matchers ----
 // Some entities feed *derived* views: orders for fixed customers are COMPUTED
@@ -13,8 +13,11 @@ import type { Bakery, ComputedDayOrder, Customer, Divisor, OrderItem, Product, P
 // a reload. We can't rely on realtime alone (it's disabled on serverless).
 const isOrdersKey = (key: unknown) => Array.isArray(key) && key[0] === 'orders'
 const isStatsKey = (key: unknown) => Array.isArray(key) && key[0] === 'statistics'
+// orders + statistics + the "Aggiunte" baseline all derive from customer state and
+// recurring templates. A change to those sources must invalidate all three.
 const isOrdersOrStatsKey = (key: unknown) =>
-  Array.isArray(key) && (key[0] === 'orders' || key[0] === 'statistics')
+  Array.isArray(key) &&
+  (key[0] === 'orders' || key[0] === 'statistics' || key[0] === 'recurring-base')
 
 // Statistics types
 export interface CustomerStat {
@@ -280,7 +283,32 @@ export function useOrders(date: string) {
       await mutate()
       await revalidateStats()
     },
+    clearOrder: async (customerId: string) => {
+      // Optimistically empty the order; the CustomerList hides 0-item orders so the
+      // customer disappears from the day. A single customer is removed server-side.
+      mutate(
+        (current) =>
+          current?.map((order) =>
+            order.customerId === customerId ? { ...order, items: [] } : order,
+          ),
+        false,
+      )
+      await clearDailyOrder(date, customerId)
+      await mutate()
+      await revalidateStats()
+    },
   }
+}
+
+// Recurring baseline hook (for the Totals "Aggiunte" board).
+// Mirrors useOrders' refresh cadence so the board stays in step with the day view.
+export function useRecurringBase(date: string) {
+  const { data, isLoading, mutate } = useSWR<RecurringBaseTotal[]>(
+    date ? ['recurring-base', date] : null,
+    () => getRecurringBase(date),
+    { dedupingInterval: 5_000, refreshInterval: 30_000, keepPreviousData: true },
+  )
+  return { base: data ?? [], isLoading, mutate }
 }
 
 // Divisors hook

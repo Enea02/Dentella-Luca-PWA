@@ -9,6 +9,33 @@ Legenda stima: **S** = piccola (≤ 1 giorno) · **M** = media (1–2 giorni) ·
 
 ---
 
+## ✅ Stato implementazione (aggiornato)
+
+Tutte le voci F1, A1, B1, C1, D1, E1 sono **implementate** e la **build di produzione passa**
+(`npm run build` ok, `tsc --noEmit` pulito sui file toccati). G1 resta fuori scope (serve call).
+
+**⚠️ Da eseguire nell'ambiente reale prima dell'uso:**
+1. **Migrazione DB:** `npm run db:migrate-0004` — script one-off **idempotente** che applica le modifiche
+   0004 (colonna `products.additions_watch`, colonne `recurring_order_items.weekday/removed`, deduplica
+   dei doppioni storici + vincolo univoco su `daily_order_items`).
+   > Nota: **non** usare `npm run db:migrate` su questo DB. È stato provisionato con `db:push`, quindi il
+   > tracking migrazioni di Drizzle è vuoto e `db:migrate` proverebbe a rigiocare 0000 fallendo su oggetti
+   > già esistenti. Lo script `db:migrate-0004` applica **solo** il delta 0004 (equivalente a
+   > `lib/db/migrations/0004_peaceful_pestilence.sql`) ed è sicuro da rieseguire.
+2. **Verifica manuale** con `npm run dev` (io non ho accesso al DB Neon da qui): esercitare svuota-cliente,
+   bacheca Aggiunte, riordino insiemi **su desktop e tablet** (C1 va confermato sul dispositivo reale),
+   editor cliente fisso per-giorno, pagina Foglio.
+
+**Mappa file principali per voce:**
+- **F1:** `lib/db/schema.ts`, `lib/db/migrations/0004_*.sql`, `app/api/orders/items/route.ts`, `app/api/orders/daily/route.ts`
+- **A1:** `app/api/orders/recurring-base/route.ts`, `components/totals/AdditionsBoard.tsx`, `app/(app)/totals/page.tsx`, colonna `additions_watch` in `products`
+- **B1:** `DELETE` in `app/api/orders/daily/route.ts`, `components/orders/DayOrder.tsx`, `components/orders/CustomerList.tsx` (nasconde 0-righe), `hooks/useData.ts` (`clearOrder`)
+- **C1:** `hooks/useDragReorder.ts` (userSelect off durante il drag), `components/manage/ProductsManager.tsx`
+- **D1:** `lib/orders/recurring.ts` (helper condiviso), `app/api/orders/route.ts` + `range` + `items` (seed) + `recurring/[customerId]`, `components/manage/CustomerEditDialog.tsx` (tab Base/giorni)
+- **E1:** `app/(app)/sheet/page.tsx`, `components/sheet/SheetCell.tsx`, voce menu in `components/layout/TopNav.tsx`
+
+---
+
 ## Vincoli trasversali (validi per tutte le voci)
 
 - **Migrazioni DB:** ogni modifica di schema passa da `npm run db:generate` (genera SQL) →
@@ -150,9 +177,8 @@ del cliente **solo per quella data**, senza toccare il template fisso.
 
 **Stima:** S–M.
 
-**Decisioni aperte:**
-- Dopo lo svuotamento di un **cliente fisso**, il nome deve **sparire** dal giorno (nascondi 0-righe) o
-  restare visibile come ordine vuoto? (Consiglio: sparire.)
+**Decisione chiusa:** dopo lo svuotamento di un cliente fisso il nome **sparisce** dal giorno
+(si nascondono gli ordini computati a 0 righe).
 
 ### C1. Riordino degli "insiemi di prodotti" (sezioni) ⭐ ("punto 5")
 
@@ -284,10 +310,8 @@ scroll orizzontale con **prima colonna (clienti) e header (prodotti) sticky**; e
 **Stima:** L. **Rischio:** medio (soprattutto UX/perf; rischio architetturale basso perché riusa gli
 endpoint esistenti).
 
-**Decisioni aperte:**
-- Quali clienti come righe: solo quelli con ordine oggi + "aggiungi", oppure tutti gli attivi (toggle)?
-- pz/kg per cella: default `product.unit` con possibilità di toggle. Confermare.
-- Layout tablet: header/colonna sticky (consigliato).
+**Decisione chiusa:** righe = **solo i clienti con un ordine per quel giorno** + la riga "Aggiungi
+cliente". pz/kg per cella con default `product.unit`; header e prima colonna sticky su tablet.
 
 ---
 
@@ -343,7 +367,7 @@ comunque eseguiti nell'ambiente reale.
 
 ## Domande residue con Luca (non bloccano l'inizio)
 
-1. **B1:** dopo lo svuotamento di un fisso, il nome sparisce dal giorno o resta come ordine vuoto?
-   (Consiglio: sparisce.)
-2. **E1:** righe = solo clienti con ordine + "aggiungi", o tutti gli attivi (con toggle)?
-3. **G1:** call di discovery per definire lo scope stagionale (entro fine settembre).
+1. **G1:** call di discovery per definire lo scope stagionale (entro fine settembre).
+
+_Chiuse: B1 → il fisso svuotato sparisce dal giorno · E1 → righe = solo clienti con ordine oggi ·
+A1 → stellina admin, delta nell'unità dell'articolo._

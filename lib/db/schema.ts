@@ -81,6 +81,9 @@ export const products = pgTable(
       .references(() => sections.id, { onDelete: 'restrict' }),
     unit: unitEnum('unit').notNull().default('pieces'),
     piecesPerKg: integer('pieces_per_kg'),
+    // When true, this product appears in the Totals "Aggiunte" board (delta vs the
+    // recurring baseline). Toggled by admin from product management (products:write).
+    additionsWatch: boolean('additions_watch').notNull().default(false),
   },
   (t) => [index('products_bakery_idx').on(t.bakeryId), index('products_section_idx').on(t.sectionId)],
 )
@@ -131,6 +134,12 @@ export const recurringOrderItems = pgTable(
     quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
     unit: unitEnum('unit').notNull(),
     position: integer('position').notNull().default(0),
+    // Per-weekday template variation. null = "base" row (applies to every weekday
+    // the customer is present); 1..7 = an override for that specific weekday.
+    weekday: smallint('weekday'),
+    // Tombstone used only by weekday-override rows: removes a base product for that
+    // weekday. Ignored on base rows (weekday IS NULL).
+    removed: boolean('removed').notNull().default(false),
   },
   (t) => [index('recurring_items_order_idx').on(t.recurringOrderId)],
 )
@@ -170,7 +179,14 @@ export const dailyOrderItems = pgTable(
     variant: text('variant'),
     position: integer('position').notNull().default(0),
   },
-  (t) => [index('daily_items_order_idx').on(t.dailyOrderId)],
+  (t) => [
+    index('daily_items_order_idx').on(t.dailyOrderId),
+    // One row per product per daily order. Prevents the duplicate-row bug where the
+    // add path could append a second row for a product already present (see
+    // docs/order-item-duplication-bug.md). Enforced together with upsert-on-conflict
+    // in the add/patch paths.
+    unique('daily_order_items_order_product_key').on(t.dailyOrderId, t.productId),
+  ],
 )
 
 // Per-date overrides for recurring items (done state + variant), keyed by

@@ -36,6 +36,13 @@ export interface Product {
   section: ProductSection;
   unit: Unit;
   piecesPerKg?: number; // Only for kg products
+  additionsWatch?: boolean; // Shown in the Totals "Aggiunte" board when true
+}
+
+// One product's baseline for a day (recurring template total, in pieces)
+export interface RecurringBaseTotal {
+  productId: string;
+  pieces: number;
 }
 
 export interface Customer {
@@ -53,11 +60,25 @@ export interface OrderItem {
   variant?: string; // Free-text variant (used only for Pizze farcite items)
 }
 
+export interface RecurringBaseItem {
+  productId: string;
+  quantity: number;
+  unit: Unit;
+}
+
+export interface RecurringOverrideItem extends RecurringBaseItem {
+  removed: boolean;
+}
+
 export interface RecurringOrder {
   id: string;
   customerId: string;
   weekdays: Weekday[];
-  items: OrderItem[];
+  // Base template (applies to every weekday the customer is present).
+  base: RecurringBaseItem[];
+  // Per-weekday variations, keyed by weekday (1..7). A `removed` item drops a base
+  // product for that day; a non-base product adds one.
+  overrides: Record<number, RecurringOverrideItem[]>;
 }
 
 export interface DailyOrder {

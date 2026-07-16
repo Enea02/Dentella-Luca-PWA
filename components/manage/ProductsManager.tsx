@@ -156,7 +156,7 @@ export function ProductsManager() {
               <div className="flex items-center gap-1.5 md:gap-2 mb-2 px-1 min-w-0">
                 <div
                   {...dragHandleProps(section.id)}
-                  className="shrink-0 cursor-grab touch-none text-slate-300 active:cursor-grabbing"
+                  className="shrink-0 cursor-grab touch-none select-none text-slate-300 active:cursor-grabbing"
                   aria-label="Trascina per riordinare"
                 >
                   <GripVertical className="h-4 w-4" />

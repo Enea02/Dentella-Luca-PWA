@@ -14,6 +14,17 @@ import { ProductPicker } from './ProductPicker'
 import { getOrderStatus } from '@/lib/utils'
 import { STATUS_COLORS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { Trash2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface DayOrderProps {
   order: ComputedDayOrder | null
@@ -22,6 +33,7 @@ interface DayOrderProps {
   onUpdateItemVariant?: (productId: string, variant: string) => Promise<void>
   onUpdateItem?: (productId: string, quantity: number, unit: 'pieces' | 'kg') => void
   onRemoveItem?: (productId: string) => void
+  onClearOrder?: () => Promise<void>
 }
 
 export function DayOrder({
@@ -31,6 +43,7 @@ export function DayOrder({
   onUpdateItemVariant,
   onUpdateItem,
   onRemoveItem,
+  onClearOrder,
 }: DayOrderProps) {
   const { user } = useAuth()
   const canEdit = can(user, 'orders:edit')
@@ -41,6 +54,19 @@ export function DayOrder({
   const [qty, setQty] = useState('')
   const [variant, setVariant] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
+
+  async function handleClearOrder() {
+    if (!onClearOrder) return
+    setClearing(true)
+    try {
+      await onClearOrder()
+      setConfirmClear(false)
+    } finally {
+      setClearing(false)
+    }
+  }
 
   const selectedProduct = products.find(p => p.id === selectedProductId)
   const showVariantInput = selectedProduct?.section === PIZZA_VARIANT_SECTION
@@ -90,11 +116,24 @@ export function DayOrder({
               {order.customerType === 'fixed' ? 'Cliente fisso' : 'Cliente giornaliero'}
             </p>
           </div>
-          <div className={cn(
-            'px-3 py-1 rounded-full text-xs font-medium',
-            STATUS_COLORS[status]
-          )}>
-            {doneCount}/{order.items.length} completati
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              'px-3 py-1 rounded-full text-xs font-medium',
+              STATUS_COLORS[status]
+            )}>
+              {doneCount}/{order.items.length} completati
+            </div>
+            {canEdit && onClearOrder && order.items.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setConfirmClear(true)}
+                title="Svuota l'ordine di questo cliente per il giorno"
+                aria-label="Svuota ordine del giorno"
+                className="rounded-full p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -213,6 +252,28 @@ export function DayOrder({
           )}
         </div>
       )}
+
+      <AlertDialog open={confirmClear} onOpenChange={(o) => !clearing && setConfirmClear(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Svuotare l&apos;ordine del giorno?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Rimuovi tutti gli articoli di &quot;{order.customerName}&quot; solo per questa data. Se è un
+              cliente fisso, l&apos;ordine fisso non viene toccato: sparisce solo per oggi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl" disabled={clearing}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleClearOrder() }}
+              disabled={clearing}
+              className="rounded-xl bg-red-600 hover:bg-red-700"
+            >
+              {clearing ? 'Svuotamento...' : 'Svuota'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

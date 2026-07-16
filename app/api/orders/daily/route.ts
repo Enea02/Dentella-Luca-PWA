@@ -1,10 +1,18 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
-import { customers, dailyOrderItems, dailyOrders, products } from '@/lib/db/schema'
+import {
+  customers,
+  dailyItemStatus,
+  dailyOrderItems,
+  dailyOrders,
+  products,
+  recurringOrders,
+} from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
+import { dayOfWeek } from '@/lib/utils'
 
 const ItemSchema = z.object({
   productId: z.string().uuid(),
@@ -73,20 +81,129 @@ export const POST = withAuth(
       }
 
       if (body.items.length > 0) {
-        await tx.insert(dailyOrderItems).values(
-          body.items.map((it) => ({
-            dailyOrderId: orderId!,
-            productId: it.productId,
-            quantity: String(it.quantity),
-            unit: it.unit,
-            done: it.done ?? false,
-            variant: it.variant ?? null,
-          })),
-        )
+        await tx
+          .insert(dailyOrderItems)
+          .values(
+            body.items.map((it) => ({
+              dailyOrderId: orderId!,
+              productId: it.productId,
+              quantity: String(it.quantity),
+              unit: it.unit,
+              done: it.done ?? false,
+              variant: it.variant ?? null,
+            })),
+          )
+          // Guard against a duplicate product in the payload (unique constraint):
+          // last occurrence wins instead of throwing.
+          .onConflictDoUpdate({
+            target: [dailyOrderItems.dailyOrderId, dailyOrderItems.productId],
+            set: {
+              quantity: sql`excluded.quantity`,
+              unit: sql`excluded.unit`,
+              done: sql`excluded.done`,
+              variant: sql`excluded.variant`,
+            },
+          })
       }
     })
 
     await notify(auth.bakeryId, { type: 'orders.updated', date: body.date })
+    return new NextResponse(null, { status: 204 })
+  },
+  { require: 'orders:edit' },
+)
+
+const ClearSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  customerId: z.string().uuid(),
+})
+
+/**
+ * Clear a customer's entire order for a single date, in one action.
+ *
+ * - **Fixed customer present this weekday:** the recurring template must stay intact,
+ *   so we override the date with an EMPTY daily order (ensure the daily_orders row
+ *   exists, wipe its items) and drop any daily_item_status overrides. The computed
+ *   order becomes 0 items → the UI hides it for the day.
+ * - **Single customer (or fixed not present today):** delete the daily_orders row
+ *   entirely (cascade removes its items) plus any daily_item_status overrides.
+ */
+export const DELETE = withAuth(
+  async (req: NextRequest, { auth }) => {
+    const { date, customerId } = await parseJson(req, ClearSchema)
+
+    const [customer] = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(and(eq(customers.id, customerId), eq(customers.bakeryId, auth.bakeryId)))
+      .limit(1)
+    if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+
+    const weekday = dayOfWeek(date)
+
+    await db.transaction(async (tx) => {
+      const [recurring] = await tx
+        .select({ weekdays: recurringOrders.weekdays })
+        .from(recurringOrders)
+        .where(
+          and(eq(recurringOrders.bakeryId, auth.bakeryId), eq(recurringOrders.customerId, customerId)),
+        )
+        .limit(1)
+      const isFixedToday = !!recurring && (recurring.weekdays ?? []).includes(weekday)
+
+      // Per-day done/variant overrides go regardless.
+      await tx
+        .delete(dailyItemStatus)
+        .where(
+          and(
+            eq(dailyItemStatus.bakeryId, auth.bakeryId),
+            eq(dailyItemStatus.date, date),
+            eq(dailyItemStatus.customerId, customerId),
+          ),
+        )
+
+      if (isFixedToday) {
+        // Override the recurring template with an empty daily order for this date.
+        const [order] = await tx
+          .insert(dailyOrders)
+          .values({ bakeryId: auth.bakeryId, date, customerId })
+          .onConflictDoNothing({
+            target: [dailyOrders.bakeryId, dailyOrders.date, dailyOrders.customerId],
+          })
+          .returning({ id: dailyOrders.id })
+
+        const dailyId =
+          order?.id ??
+          (
+            await tx
+              .select({ id: dailyOrders.id })
+              .from(dailyOrders)
+              .where(
+                and(
+                  eq(dailyOrders.bakeryId, auth.bakeryId),
+                  eq(dailyOrders.date, date),
+                  eq(dailyOrders.customerId, customerId),
+                ),
+              )
+              .limit(1)
+          )[0].id
+
+        await tx.delete(dailyOrderItems).where(eq(dailyOrderItems.dailyOrderId, dailyId))
+      } else {
+        // Single customer (or fixed not present today): remove the day entirely.
+        await tx
+          .delete(dailyOrders)
+          .where(
+            and(
+              eq(dailyOrders.bakeryId, auth.bakeryId),
+              eq(dailyOrders.date, date),
+              eq(dailyOrders.customerId, customerId),
+            ),
+          )
+      }
+    })
+
+    await notify(auth.bakeryId, { type: 'orders.updated', date })
     return new NextResponse(null, { status: 204 })
   },
   { require: 'orders:edit' },
