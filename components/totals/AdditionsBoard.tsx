@@ -9,27 +9,16 @@ import { cn, toPieces } from '@/lib/utils'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import type { OrderItem, Product } from '@/lib/types'
+import type { OrderItem } from '@/lib/types'
 
 interface AdditionsBoardProps {
   date: string
   orderItems: OrderItem[]
 }
 
-// Render a pieces total in the product's own unit (kg for kg products, else pz).
-function toDisplay(pieces: number, product: Product): { value: number; unit: 'pz' | 'kg' } {
-  if (product.unit === 'kg' && product.piecesPerKg) {
-    return { value: pieces / product.piecesPerKg, unit: 'kg' }
-  }
-  return { value: pieces, unit: 'pz' }
-}
-
-function fmt(value: number, unit: 'pz' | 'kg'): string {
-  if (unit === 'kg') {
-    // Trim to at most 2 decimals, drop trailing zeros.
-    return `${Number(value.toFixed(2))} kg`
-  }
-  return `${Math.round(value)} pz`
+// Additions are always shown in pieces (pz), even for products normally sold by weight.
+function fmt(pieces: number): string {
+  return `${Math.round(pieces)} pz`
 }
 
 export function AdditionsBoard({ date, orderItems }: AdditionsBoardProps) {
@@ -155,8 +144,6 @@ export function AdditionsBoard({ date, orderItems }: AdditionsBoardProps) {
             </p>
           ) : (
             rows.map(({ product, actual, deltaPieces }) => {
-              const delta = toDisplay(deltaPieces, product)
-              const total = toDisplay(actual, product)
               const positive = deltaPieces > 0
               return (
                 <div
@@ -172,11 +159,11 @@ export function AdditionsBoard({ date, orderItems }: AdditionsBoardProps) {
                       )}
                     >
                       {positive ? '+' : '−'}
-                      {fmt(Math.abs(delta.value), delta.unit)}
+                      {fmt(Math.abs(deltaPieces))}
                     </span>
                     <span className="text-slate-300">=</span>
                     <span className="text-sm font-bold text-slate-900 min-w-[3.5rem] text-right">
-                      {fmt(total.value, total.unit)}
+                      {fmt(actual)}
                     </span>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOrders, useProducts, useSections, useCustomers } from '@/hooks/useData'
 import { useAppStore } from '@/lib/store'
 import { useAuth } from '@/hooks/useAuth'
@@ -55,6 +55,21 @@ export default function SheetPage() {
     }
     return list.sort((a, b) => a.name.localeCompare(b.name))
   }, [orders, extraIds, customers])
+
+  // The two header rows both stick to the top: the section row at 0, the product
+  // row right below it. Measure the section row so the product row's offset always
+  // matches its real height (no magic number that drifts and overlaps the body).
+  const sectionRowRef = useRef<HTMLTableRowElement>(null)
+  const [sectionRowH, setSectionRowH] = useState(34)
+  useEffect(() => {
+    const el = sectionRowRef.current
+    if (!el) return
+    const measure = () => setSectionRowH(el.offsetHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [columns.length])
 
   // Column totals in pieces (consistent with the Totali page).
   const totals = new Map<string, number>()
@@ -113,7 +128,6 @@ export default function SheetPage() {
     )
   }
 
-  const thick = 'border-l-2 border-l-slate-400'
   const colCount = 1 + flatProducts.length
 
   return (
@@ -131,48 +145,55 @@ export default function SheetPage() {
         </div>
       ) : (
         <div className="overflow-auto max-h-[calc(100dvh-140px)] rounded-xl bg-white ring-1 ring-slate-300 shadow-sm">
-          <table className="border-collapse text-sm">
+          {/* border-separate (not collapse) so sticky cells keep their borders and
+              backgrounds while scrolling; borders are drawn per-side to avoid doubling. */}
+          <table className="border-separate border-spacing-0 text-sm">
             <thead>
-              {/* Section labels */}
-              <tr className="sticky top-0 z-30">
+              {/* Section labels — sticky at the very top */}
+              <tr ref={sectionRowRef}>
                 <th
                   rowSpan={2}
-                  className="sticky left-0 z-40 bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-slate-600 border border-slate-300 min-w-[8rem]"
+                  className="sticky left-0 top-0 z-40 bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-slate-600 border-b border-r border-slate-300 min-w-[8rem]"
                 >
                   Cliente
                 </th>
-                {columns.map((c) => (
+                {columns.map((c, ci) => (
                   <th
                     key={c.section.id}
                     colSpan={c.products.length}
                     className={cn(
-                      'bg-slate-100 px-2 py-1 text-center text-[11px] font-semibold border border-slate-300',
-                      thick,
+                      'sticky top-0 z-30 px-2 py-1.5 text-center text-[11px] font-semibold border-b border-r border-slate-300',
+                      c.section.color,
+                      ci < columns.length - 1 && 'border-r-2 border-r-slate-400',
                     )}
                   >
-                    <span className={cn('px-2 py-0.5 rounded-full', c.section.color)}>{c.section.name}</span>
+                    {c.section.name}
                   </th>
                 ))}
               </tr>
-              {/* Product names + default unit */}
-              <tr className="sticky top-[35px] z-30">
+              {/* Product names + default unit — sticky right below the section row */}
+              <tr>
                 {columns.map((c, ci) =>
-                  c.products.map((p, pi) => (
-                    <th
-                      key={p.id}
-                      className={cn(
-                        'bg-slate-50 px-1 py-2 align-bottom border border-slate-200',
-                        pi === 0 && ci > 0 && thick,
-                      )}
-                    >
-                      <div className="mx-auto w-14 truncate text-[11px] font-medium text-slate-700" title={p.name}>
-                        {p.name}
-                      </div>
-                      <div className="text-[9px] uppercase tracking-wide text-slate-400">
-                        {p.unit === 'kg' ? 'kg' : 'pz'}
-                      </div>
-                    </th>
-                  )),
+                  c.products.map((p, pi) => {
+                    const sectionEnd = pi === c.products.length - 1 && ci < columns.length - 1
+                    return (
+                      <th
+                        key={p.id}
+                        style={{ top: sectionRowH }}
+                        className={cn(
+                          'sticky z-30 bg-slate-50 px-1 py-2 align-bottom border-b border-r border-slate-300 max-w-[7rem]',
+                          sectionEnd && 'border-r-2 border-r-slate-400',
+                        )}
+                      >
+                        <div className="mx-auto min-w-[3.5rem] whitespace-normal break-normal leading-tight text-[11px] font-medium text-slate-700" title={p.name}>
+                          {p.name}
+                        </div>
+                        <div className="text-[9px] uppercase tracking-wide text-slate-400">
+                          {p.unit === 'kg' ? 'kg' : 'pz'}
+                        </div>
+                      </th>
+                    )
+                  }),
                 )}
               </tr>
             </thead>
@@ -180,19 +201,20 @@ export default function SheetPage() {
             <tbody>
               {rows.map((row, ri) => (
                 <tr key={row.customerId} className="group">
-                  <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 px-3 py-1 font-medium text-slate-800 border border-slate-300 max-w-[10rem] truncate">
+                  <td className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 px-3 py-1 font-medium text-slate-800 border-b border-r border-slate-300 max-w-[10rem] whitespace-normal break-normal leading-tight" title={row.name}>
                     {row.name}
                   </td>
                   {columns.map((c, ci) =>
                     c.products.map((p, pi) => {
                       const colIndex = colIndexByProduct.get(p.id) ?? 0
+                      const sectionEnd = pi === c.products.length - 1 && ci < columns.length - 1
                       return (
                         <td
                           key={p.id}
                           className={cn(
-                            'border border-slate-200 p-0 h-11',
+                            'border-b border-r border-slate-200 p-0 h-11',
                             'focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-500 focus-within:bg-blue-50',
-                            pi === 0 && ci > 0 && thick,
+                            sectionEnd && 'border-r-2 border-r-slate-400',
                           )}
                         >
                           <SheetCell
@@ -215,7 +237,7 @@ export default function SheetPage() {
                 <tr>
                   <td
                     colSpan={colCount}
-                    className="border border-slate-200 px-4 py-6 text-center text-sm text-slate-400"
+                    className="border-b border-slate-200 px-4 py-6 text-center text-sm text-slate-400"
                   >
                     Nessun ordine per questa data. Aggiungi un cliente qui sotto.
                   </td>
@@ -224,22 +246,25 @@ export default function SheetPage() {
             </tbody>
 
             <tfoot>
-              <tr className="sticky bottom-0 z-20">
-                <td className="sticky left-0 z-30 bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600 border border-slate-300">
+              <tr>
+                <td className="sticky left-0 bottom-0 z-30 bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600 border-t border-r border-slate-300">
                   Totale (pz)
                 </td>
                 {columns.map((c, ci) =>
-                  c.products.map((p, pi) => (
-                    <td
-                      key={p.id}
-                      className={cn(
-                        'bg-slate-100 px-1 py-2 text-center text-xs font-semibold text-slate-800 border border-slate-300 tabular-nums',
-                        pi === 0 && ci > 0 && thick,
-                      )}
-                    >
-                      {totals.get(p.id) ?? 0}
-                    </td>
-                  )),
+                  c.products.map((p, pi) => {
+                    const sectionEnd = pi === c.products.length - 1 && ci < columns.length - 1
+                    return (
+                      <td
+                        key={p.id}
+                        className={cn(
+                          'sticky bottom-0 z-20 bg-slate-100 px-1 py-2 text-center text-xs font-semibold text-slate-800 border-t border-r border-slate-300 tabular-nums',
+                          sectionEnd && 'border-r-2 border-r-slate-400',
+                        )}
+                      >
+                        {totals.get(p.id) ?? 0}
+                      </td>
+                    )
+                  }),
                 )}
               </tr>
             </tfoot>

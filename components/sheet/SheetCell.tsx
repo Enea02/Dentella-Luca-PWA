@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { OrderItem, Product } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface SheetCellProps {
   product: Product
@@ -55,6 +56,10 @@ export function SheetCell({ product, item, r, c, onCommit, onRemove }: SheetCell
     }
   }
 
+  // Size the input to the number's length (in char widths) so 3+ digit values aren't
+  // clipped: the column grows to fit and shrinks back to the minimum for short values.
+  const inputWidth = `${Math.max(value.length, 2) + 1.5}ch`
+
   return (
     <div className="flex h-full items-center justify-center gap-0.5 px-0.5">
       <input
@@ -85,24 +90,32 @@ export function SheetCell({ product, item, r, c, onCommit, onRemove }: SheetCell
             move(-1, e.currentTarget)
           }
         }}
-        className="w-full min-w-0 bg-transparent py-3 text-center text-sm tabular-nums outline-none"
+        style={{ width: inputWidth }}
+        className="shrink-0 bg-transparent py-3 text-center text-sm tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:[-webkit-appearance:none] [&::-webkit-outer-spin-button]:[-webkit-appearance:none]"
       />
-      <button
-        type="button"
-        tabIndex={-1}
-        onClick={() => {
-          const u = unit === 'pieces' ? 'kg' : 'pieces'
+      <Select
+        value={unit}
+        onValueChange={(v) => {
+          const u = v as 'pieces' | 'kg'
           setUnit(u)
           if (item) commit(value, u)
         }}
-        title="Cambia unità"
-        className={cn(
-          'shrink-0 text-[10px] font-medium leading-none transition-colors',
-          value === '' ? 'invisible' : 'text-slate-400 hover:text-slate-700',
-        )}
       >
-        {unit === 'kg' ? 'kg' : 'pz'}
-      </button>
+        <SelectTrigger
+          tabIndex={-1}
+          aria-label="Cambia unità"
+          className={cn(
+            'h-auto w-auto shrink-0 gap-0 border-0 bg-transparent p-1 text-[10px] font-medium leading-none text-slate-400 shadow-none transition-colors hover:text-slate-700 focus-visible:ring-0 data-[size=default]:h-auto [&_svg]:hidden',
+            value === '' && 'pointer-events-none invisible',
+          )}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="min-w-[4rem]">
+          <SelectItem value="pieces">pz</SelectItem>
+          <SelectItem value="kg">kg</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   )
 }
