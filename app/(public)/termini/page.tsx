@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { LegalLayout, Section } from '@/components/legal/LegalLayout'
+import { LegalLayout, Section, Note } from '@/components/legal/LegalLayout'
 
 export const metadata: Metadata = {
   title: 'Termini e Condizioni - Panificio',
@@ -31,10 +31,20 @@ export default function TerminiPage() {
           statistiche di un panificio.
         </p>
         <p>
-          L&apos;Applicazione è messa a disposizione da Enea Frontera (di seguito il “Fornitore” o il
-          “Titolare”) ed è riservata agli utenti autorizzati (titolare, amministratore e personale
-          del panificio, di seguito gli “Utenti”).
+          L&apos;Applicazione è sviluppata e messa a disposizione a titolo gratuito da Enea Frontera,
+          persona fisica (di seguito il “Fornitore”), ed è riservata agli utenti autorizzati
+          (titolare, amministratore e personale del panificio, di seguito gli “Utenti”).
         </p>
+        <Note>
+          <strong>Ruoli distinti.</strong> Il <strong>Fornitore</strong> (Enea Frontera) sviluppa e
+          fornisce il software. Il <strong>Titolare del trattamento</strong> dei dati inseriti
+          (anagrafiche clienti, ordini) è il panificio che utilizza l&apos;Applicazione, come indicato
+          nella{' '}
+          <Link href="/privacy" className="underline underline-offset-2 hover:text-slate-700">
+            Privacy Policy
+          </Link>
+          .
+        </Note>
         <p>
           L&apos;accesso e l&apos;uso dell&apos;Applicazione comportano l&apos;accettazione integrale
           dei presenti Termini. L&apos;Utente che non li accetti è tenuto a non utilizzare
@@ -150,8 +160,16 @@ export default function TerminiPage() {
 
       <Section title="12. Contatti">
         <p>
-          Per qualsiasi comunicazione relativa ai presenti Termini è possibile contattare: «Ragione
-          sociale» — «email@panificio.it» — «PEC (se disponibile)».
+          Per comunicazioni relative al <strong>software</strong> (Fornitore): Enea Frontera, persona
+          fisica — C.F. «codice fiscale» — «email».
+        </p>
+        <p>
+          Per comunicazioni relative al <strong>trattamento dei dati</strong> (Titolare): il
+          panificio ai recapiti indicati nella{' '}
+          <Link href="/privacy" className="underline underline-offset-2 hover:text-slate-700">
+            Privacy Policy
+          </Link>
+          .
         </p>
       </Section>
     </LegalLayout>

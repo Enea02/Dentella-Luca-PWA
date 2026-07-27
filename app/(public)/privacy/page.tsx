@@ -26,6 +26,18 @@ export default function PrivacyPolicyPage() {
       }
     >
       <Section title="1. Titolare del trattamento">
+        <Note>
+          Il <strong>Titolare del trattamento</strong> dei dati (clienti, ordini) è il{' '}
+          <strong>panificio</strong> che utilizza l&apos;applicazione, i cui dati sono riportati di
+          seguito. Il software è sviluppato e fornito a titolo gratuito da Enea Frontera (persona
+          fisica), che ne è il semplice <strong>Fornitore</strong> — non il Titolare — e, ove gestisca
+          l&apos;infrastruttura per conto del panificio, agisce quale Responsabile del trattamento
+          (art. 28 GDPR). Cfr.{' '}
+          <Link href="/termini" className="underline underline-offset-2 hover:text-slate-700">
+            Termini e Condizioni
+          </Link>
+          .
+        </Note>
         <p>Il Titolare del trattamento è:</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li><strong>Denominazione / Ditta:</strong> «Ragione sociale del panificio»</li>
