@@ -15,6 +15,7 @@ export interface SectionDef {
   name: string;
   color: string; // Tailwind badge classes
   order: number;
+  pinBottom?: boolean; // Not-done items of this section sink to the bottom of an order
 }
 
 // Production group: a user-defined collection of sections rendered as one production table
@@ -50,6 +51,8 @@ export interface Customer {
   name: string;
   type: CustomerType;
   active: boolean;
+  suspendedFrom?: string | null; // YYYY-MM-DD, inclusive
+  suspendedTo?: string | null; // YYYY-MM-DD, inclusive
 }
 
 export interface OrderItem {
@@ -57,6 +60,8 @@ export interface OrderItem {
   quantity: number;
   unit: Unit;
   done: boolean;
+  // Marked from the Production view only (colors the production cell, not the order).
+  productionDone?: boolean;
   variant?: string; // Free-text variant (used only for Pizze farcite items)
 }
 
@@ -79,6 +84,8 @@ export interface RecurringOrder {
   // Per-weekday variations, keyed by weekday (1..7). A `removed` item drops a base
   // product for that day; a non-base product adds one.
   overrides: Record<number, RecurringOverrideItem[]>;
+  // Per-weekday display order (productIds), keyed by weekday (1..7).
+  dayOrders?: Record<number, string[]>;
 }
 
 export interface DailyOrder {
@@ -115,6 +122,7 @@ export interface Bakery {
   id: string;
   name: string;
   orderCutoffHour: number | null;
+  sheetHidden: boolean;
 }
 
 // User/Auth

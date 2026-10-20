@@ -21,6 +21,20 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
+import { format } from 'date-fns'
+
+const TODAY = () => format(new Date(), 'yyyy-MM-dd')
+const fmtDate = (d: string) => d.split('-').reverse().slice(0, 2).join('/')
+
+// Label for a scheduled/ongoing suspension range, or null when none or already past.
+function suspensionLabel(c: Customer): string | null {
+  const { suspendedFrom: from, suspendedTo: to } = c
+  if (!from && !to) return null
+  if (to && to < TODAY()) return null
+  if (from && to) return `Sospeso ${fmtDate(from)}–${fmtDate(to)}`
+  if (from) return `Sospeso dal ${fmtDate(from)}`
+  return `Sospeso fino al ${fmtDate(to!)}`
+}
 
 export function CustomersManager() {
   const { customers, remove, update } = useCustomers()
@@ -101,6 +115,11 @@ export function CustomersManager() {
                 {!customer.active && (
                   <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0 bg-amber-100 text-amber-700">
                     Sospeso
+                  </span>
+                )}
+                {customer.active && suspensionLabel(customer) && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-medium shrink-0 bg-amber-50 text-amber-700 ring-1 ring-amber-200">
+                    {suspensionLabel(customer)}
                   </span>
                 )}
               </div>

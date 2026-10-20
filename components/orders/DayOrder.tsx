@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { can } from '@/lib/auth/permissions'
-import { useProducts } from '@/hooks/useData'
+import { useProducts, useSections } from '@/hooks/useData'
 import type { ComputedDayOrder, OrderItem } from '@/lib/types'
 import { PIZZA_VARIANT_SECTION } from '@/lib/types'
 import { ProductLineStaff } from './ProductLineStaff'
@@ -48,6 +48,7 @@ export function DayOrder({
   const { user } = useAuth()
   const canEdit = can(user, 'orders:edit')
   const { products } = useProducts()
+  const { sections } = useSections()
   const [addingItem, setAddingItem] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState('')
   const [unit, setUnit] = useState<'pieces' | 'kg'>('pieces')
@@ -101,9 +102,15 @@ export function DayOrder({
 
   const status = getOrderStatus(order.items)
   const doneCount = order.items.filter(i => i.done).length
-  // Display order: completed ("done"/green) items sink to the bottom, keeping the
-  // saved arrangement within each group (Array.prototype.sort is stable).
-  const displayItems = [...order.items].sort((a, b) => Number(a.done) - Number(b.done))
+  // Display order (stable sort keeps the saved arrangement within each group):
+  //   1. not-done items of normal sections
+  //   2. not-done items of "pinned to bottom" sections
+  //   3. done (green) items
+  const pinnedSections = new Set(sections.filter(s => s.pinBottom).map(s => s.name))
+  const sectionOf = new Map(products.map(p => [p.id, p.section]))
+  const rank = (item: OrderItem) =>
+    item.done ? 2 : pinnedSections.has(sectionOf.get(item.productId) ?? '') ? 1 : 0
+  const displayItems = [...order.items].sort((a, b) => rank(a) - rank(b))
 
   return (
     <div className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden flex flex-col h-full">
@@ -138,120 +145,121 @@ export function DayOrder({
         </div>
       </div>
 
-      {/* Items list */}
-      <ScrollArea className="flex-1 h-[calc(100vh-350px)] md:h-[50vh]">
-        <div className="p-3 space-y-2">
-          {displayItems.map((item) => {
-            const product = products.find(p => p.id === item.productId)
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {/* Items list */}
+        <ScrollArea className="flex-1 h-[calc(100vh-350px)] md:h-[50vh] lg:h-[60vh]">
+          <div className="p-3 space-y-2">
+            {displayItems.map((item) => {
+              const product = products.find(p => p.id === item.productId)
 
-            if (canEdit) {
+              if (canEdit) {
+                return (
+                  <ProductLineOwner
+                    key={`${order.customerId}-${item.productId}`}
+                    item={item}
+                    product={product}
+                    onToggle={(done) => onToggleItem(item.productId, done)}
+                    onUpdate={
+                      onUpdateItem
+                        ? (q, u) => onUpdateItem(item.productId, q, u)
+                        : undefined
+                    }
+                    onUpdateVariant={
+                      onUpdateItemVariant
+                        ? (v) => onUpdateItemVariant(item.productId, v)
+                        : undefined
+                    }
+                    onRemove={
+                      onRemoveItem ? () => onRemoveItem(item.productId) : undefined
+                    }
+                  />
+                )
+              }
+
               return (
-                <ProductLineOwner
+                <ProductLineStaff
                   key={`${order.customerId}-${item.productId}`}
                   item={item}
                   product={product}
                   onToggle={(done) => onToggleItem(item.productId, done)}
-                  onUpdate={
-                    onUpdateItem
-                      ? (q, u) => onUpdateItem(item.productId, q, u)
-                      : undefined
-                  }
-                  onUpdateVariant={
-                    onUpdateItemVariant
-                      ? (v) => onUpdateItemVariant(item.productId, v)
-                      : undefined
-                  }
-                  onRemove={
-                    onRemoveItem ? () => onRemoveItem(item.productId) : undefined
-                  }
                 />
               )
-            }
-
-            return (
-              <ProductLineStaff
-                key={`${order.customerId}-${item.productId}`}
-                item={item}
-                product={product}
-                onToggle={(done) => onToggleItem(item.productId, done)}
-              />
-            )
-          })}
-        </div>
-      </ScrollArea>
-
-      {/* Add item – owner only */}
-      {canEdit && onAddItem && (
-        <div className="border-t border-slate-100 p-3">
-          {!addingItem ? (
-            <button
-              type="button"
-              onClick={() => setAddingItem(true)}
-              className="w-full rounded-xl border border-dashed border-slate-300 py-2 text-xs text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors"
-            >
-              + Aggiungi articolo
-            </button>
-          ) : (
-            <div className="grid gap-2">
-              <ProductPicker
-                value={selectedProductId}
-                onChange={setSelectedProductId}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Select value={unit} onValueChange={(v) => setUnit(v as 'pieces' | 'kg')}>
-                  <SelectTrigger className="w-full rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pieces">Pezzi</SelectItem>
-                    <SelectItem value="kg">Kg</SelectItem>
-                  </SelectContent>
-                </Select>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  inputMode="decimal"
-                  value={qty}
-                  onChange={(e) => setQty(e.target.value)}
-                  placeholder="Qtà"
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+            })}
+          </div>
+        </ScrollArea>
+        {/* Add item – owner only. Below the list on mobile, left column on desktop. */}
+        {canEdit && onAddItem && (
+          <div className="order-last border-t border-slate-100 p-3 lg:order-first lg:w-72 lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r">
+            {!addingItem ? (
+              <button
+                type="button"
+                onClick={() => setAddingItem(true)}
+                className="w-full rounded-xl border border-dashed border-slate-300 py-2 text-xs text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors"
+              >
+                + Aggiungi articolo
+              </button>
+            ) : (
+              <div className="grid gap-2">
+                <ProductPicker
+                  value={selectedProductId}
+                  onChange={setSelectedProductId}
                 />
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={unit} onValueChange={(v) => setUnit(v as 'pieces' | 'kg')}>
+                    <SelectTrigger className="w-full rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pieces">Pezzi</SelectItem>
+                      <SelectItem value="kg">Kg</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    inputMode="decimal"
+                    value={qty}
+                    onChange={(e) => setQty(e.target.value)}
+                    placeholder="Qtà"
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                  />
+                </div>
+                {showVariantInput && (
+                  <input
+                    type="text"
+                    value={variant}
+                    onChange={(e) => setVariant(e.target.value)}
+                    placeholder="Variante (es. extra prosciutto)"
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                  />
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddingItem(false)
+                      setVariant('')
+                      setQty('')
+                    }}
+                    className="flex-1 rounded-xl border border-slate-200 py-2 text-xs text-slate-600"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    disabled={!selectedProductId || !qtyValid || saving}
+                    className="flex-1 rounded-xl bg-slate-900 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                  >
+                    {saving ? '...' : 'Aggiungi'}
+                  </button>
+                </div>
               </div>
-              {showVariantInput && (
-                <input
-                  type="text"
-                  value={variant}
-                  onChange={(e) => setVariant(e.target.value)}
-                  placeholder="Variante (es. extra prosciutto)"
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
-                />
-              )}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAddingItem(false)
-                    setVariant('')
-                    setQty('')
-                  }}
-                  className="flex-1 rounded-xl border border-slate-200 py-2 text-xs text-slate-600"
-                >
-                  Annulla
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  disabled={!selectedProductId || !qtyValid || saving}
-                  className="flex-1 rounded-xl bg-slate-900 py-2 text-xs font-semibold text-white disabled:opacity-40"
-                >
-                  {saving ? '...' : 'Aggiungi'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
 
       <AlertDialog open={confirmClear} onOpenChange={(o) => !clearing && setConfirmClear(o)}>
         <AlertDialogContent>

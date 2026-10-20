@@ -73,10 +73,16 @@ export const customersApi = {
 // ---- Orders ----
 export const ordersApi = {
   getForDate: (date: string) => fetchRequired<ComputedDayOrder[]>(`/orders?date=${date}`),
-  toggleItem: (date: string, customerId: string, productId: string, done: boolean) =>
+  toggleItem: (
+    date: string,
+    customerId: string,
+    productId: string,
+    done: boolean,
+    scope: 'order' | 'production' = 'order',
+  ) =>
     fetchApi<void>('/orders/toggle', {
       method: 'POST',
-      body: JSON.stringify({ date, customerId, productId, done }),
+      body: JSON.stringify({ date, customerId, productId, done, scope }),
     }).then(() => undefined),
   updateItem: (date: string, customerId: string, productId: string, updates: Partial<OrderItem>) =>
     fetchApi<void>('/orders/items', {
@@ -104,10 +110,11 @@ export async function upsertRecurringOrder(
   weekdays: Weekday[],
   base: RecurringBaseItem[],
   overrides: Record<number, RecurringOverrideItem[]>,
+  dayOrders: Record<number, string[]> = {},
 ): Promise<void> {
   await fetchApi(`/orders/recurring/${customerId}`, {
     method: 'PUT',
-    body: JSON.stringify({ weekdays, base, overrides }),
+    body: JSON.stringify({ weekdays, base, overrides, dayOrders }),
   })
 }
 
@@ -140,7 +147,7 @@ export async function clearDailyOrder(date: string, customerId: string): Promise
 // ---- Bakery ----
 export const bakeryApi = {
   get: () => fetchRequired<Bakery>('/bakery'),
-  update: (updates: { name?: string; orderCutoffHour?: number | null }) =>
+  update: (updates: { name?: string; orderCutoffHour?: number | null; sheetHidden?: boolean }) =>
     fetchRequired<Bakery>('/bakery', { method: 'PATCH', body: JSON.stringify(updates) }),
 }
 
@@ -185,6 +192,11 @@ export const sectionsApi = {
     fetchRequired<SectionDef>(`/sections/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ name }),
+    }),
+  setPinBottom: (id: string, pinBottom: boolean) =>
+    fetchRequired<SectionDef>(`/sections/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ pinBottom }),
     }),
   delete: (id: string) => fetchApi<void>(`/sections/${id}`, { method: 'DELETE' }).then(() => undefined),
   reorder: (orderedIds: string[]) =>

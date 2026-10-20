@@ -11,11 +11,24 @@ const Schema = z.object({
   customerId: z.string().uuid(),
   productId: z.string().uuid(),
   done: z.boolean(),
+  // 'order' (default): the item's done state, shown everywhere (un-marking also
+  //   clears a production-only mark, as before).
+  // 'production': marks the production cell only — the order view is untouched.
+  //   Un-marking from production clears both, so the cell always toggles visibly.
+  scope: z.enum(['order', 'production']).optional().default('order'),
 })
 
 export const POST = withAuth(
   async (req: NextRequest, { auth }) => {
-    const { date, customerId, productId, done } = await parseJson(req, Schema)
+    const { date, customerId, productId, done, scope } = await parseJson(req, Schema)
+    const patch =
+      scope === 'production'
+        ? done
+          ? { productionDone: true }
+          : { productionDone: false, done: false }
+        : done
+          ? { done: true }
+          : { done: false, productionDone: false }
 
     // Try daily order first
     const daily = await db
@@ -33,7 +46,7 @@ export const POST = withAuth(
     if (daily.length > 0) {
       const updated = await db
         .update(dailyOrderItems)
-        .set({ done })
+        .set(patch)
         .where(and(eq(dailyOrderItems.dailyOrderId, daily[0].id), eq(dailyOrderItems.productId, productId)))
         .returning({ id: dailyOrderItems.id })
       if (updated.length > 0) {
@@ -45,7 +58,7 @@ export const POST = withAuth(
     // Otherwise upsert into daily_item_status (recurring item override)
     await db
       .insert(dailyItemStatus)
-      .values({ bakeryId: auth.bakeryId, date, customerId, productId, done })
+      .values({ bakeryId: auth.bakeryId, date, customerId, productId, done: false, ...patch })
       .onConflictDoUpdate({
         target: [
           dailyItemStatus.bakeryId,
@@ -53,7 +66,7 @@ export const POST = withAuth(
           dailyItemStatus.customerId,
           dailyItemStatus.productId,
         ],
-        set: { done },
+        set: patch,
       })
 
     await notify(auth.bakeryId, { type: 'orders.updated', date })

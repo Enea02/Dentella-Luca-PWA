@@ -10,6 +10,9 @@ const UpdateSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   type: z.enum(['fixed', 'single']).optional(),
   active: z.boolean().optional(),
+  // Inclusive suspension range (YYYY-MM-DD); null clears a bound.
+  suspendedFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  suspendedTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 })
 
 export const PATCH = withAuth<{ id: string }>(
@@ -20,7 +23,14 @@ export const PATCH = withAuth<{ id: string }>(
       .update(customers)
       .set(body)
       .where(and(eq(customers.id, id), eq(customers.bakeryId, auth.bakeryId)))
-      .returning({ id: customers.id, name: customers.name, type: customers.type, active: customers.active })
+      .returning({
+        id: customers.id,
+        name: customers.name,
+        type: customers.type,
+        active: customers.active,
+        suspendedFrom: customers.suspendedFrom,
+        suspendedTo: customers.suspendedTo,
+      })
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     await notify(auth.bakeryId, { type: 'customers.updated' })
     return NextResponse.json(updated)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Check, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProducts, useSections } from '@/hooks/useData'
@@ -20,6 +20,22 @@ export function ProductPicker({ value, onChange, placeholder = 'Seleziona prodot
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [expandedSection, setExpandedSection] = useState<string | null>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // On open, bring the whole picker to the middle of the viewport so the list
+  // isn't cut off at the bottom of the screen.
+  useEffect(() => {
+    if (open) pickerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [open])
+
+  // When a section expands, scroll the list so that section's header sits at the top
+  // and its products are visible.
+  useEffect(() => {
+    if (!open || !expandedSection || !listRef.current) return
+    const header = listRef.current.querySelector<HTMLElement>(`[data-section="${CSS.escape(expandedSection)}"]`)
+    if (header) listRef.current.scrollTo({ top: header.offsetTop, behavior: 'smooth' })
+  }, [open, expandedSection])
 
   const sortedSections = [...sections].sort((a, b) => a.order - b.order)
   const q = search.toLowerCase()
@@ -72,7 +88,7 @@ export function ProductPicker({ value, onChange, placeholder = 'Seleziona prodot
 
   // Open state — inline accordion picker
   return (
-    <div className="rounded-xl border border-slate-300 bg-white overflow-hidden shadow-sm">
+    <div ref={pickerRef} className="rounded-xl border border-slate-300 bg-white overflow-hidden shadow-sm">
       {/* Search bar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100">
         <Search className="h-4 w-4 text-slate-400 shrink-0" />
@@ -89,7 +105,7 @@ export function ProductPicker({ value, onChange, placeholder = 'Seleziona prodot
       </div>
 
       {/* Sections */}
-      <div className="max-h-60 overflow-y-auto">
+      <div ref={listRef} className="relative max-h-60 overflow-y-auto">
         {grouped.length === 0 && (
           <div className="px-4 py-4 text-sm text-slate-400 text-center">Nessun prodotto trovato</div>
         )}
@@ -98,7 +114,7 @@ export function ProductPicker({ value, onChange, placeholder = 'Seleziona prodot
           const isExpanded = isSearching || expandedSection === section.name
 
           return (
-            <div key={section.id} className="border-b border-slate-100 last:border-0">
+            <div key={section.id} data-section={section.name} className="border-b border-slate-100 last:border-0">
               {/* Section header */}
               <button
                 type="button"

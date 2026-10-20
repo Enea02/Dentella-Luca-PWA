@@ -8,7 +8,14 @@ import { notify } from '@/lib/realtime/notify'
 
 export const GET = withAuth(async (_req, { auth }) => {
   const rows = await db
-    .select({ id: customers.id, name: customers.name, type: customers.type, active: customers.active })
+    .select({
+        id: customers.id,
+        name: customers.name,
+        type: customers.type,
+        active: customers.active,
+        suspendedFrom: customers.suspendedFrom,
+        suspendedTo: customers.suspendedTo,
+      })
     .from(customers)
     .where(eq(customers.bakeryId, auth.bakeryId))
     .orderBy(asc(customers.name))
@@ -26,7 +33,14 @@ export const POST = withAuth(
     const [created] = await db
       .insert(customers)
       .values({ bakeryId: auth.bakeryId, name: body.name, type: body.type })
-      .returning({ id: customers.id, name: customers.name, type: customers.type, active: customers.active })
+      .returning({
+        id: customers.id,
+        name: customers.name,
+        type: customers.type,
+        active: customers.active,
+        suspendedFrom: customers.suspendedFrom,
+        suspendedTo: customers.suspendedTo,
+      })
     await notify(auth.bakeryId, { type: 'customers.updated' })
     return NextResponse.json(created, { status: 201 })
   },

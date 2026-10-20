@@ -97,7 +97,7 @@ export default function ProductionPage() {
             sections={group.sections}
             displayMode={group.displayMode}
             orders={orders}
-            onToggleCell={(customerId, productId, done) => toggleItem(customerId, productId, done)}
+            onToggleCell={(customerId, productId, done) => toggleItem(customerId, productId, done, 'production')}
           />
         ))
       )}

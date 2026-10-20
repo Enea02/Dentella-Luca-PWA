@@ -14,6 +14,7 @@ export const GET = withAuth<{ customerId: string }>(async (_req, { params, auth 
       id: recurringOrders.id,
       customerId: recurringOrders.customerId,
       weekdays: recurringOrders.weekdays,
+      dayOrders: recurringOrders.dayOrders,
     })
     .from(recurringOrders)
     .where(and(eq(recurringOrders.bakeryId, auth.bakeryId), eq(recurringOrders.customerId, customerId)))
@@ -55,6 +56,7 @@ export const GET = withAuth<{ customerId: string }>(async (_req, { params, auth 
     weekdays: recurring.weekdays ?? [],
     base,
     overrides,
+    dayOrders: recurring.dayOrders ?? {},
   })
 })
 
@@ -73,6 +75,8 @@ const PutSchema = z.object({
   base: z.array(BaseItemSchema),
   // Keyed by weekday ("1".."7"); JSON object keys are strings.
   overrides: z.record(z.string().regex(/^[1-7]$/), z.array(OverrideItemSchema)).optional().default({}),
+  // Per-weekday display order (productIds), keyed by weekday ("1".."7").
+  dayOrders: z.record(z.string().regex(/^[1-7]$/), z.array(z.string().uuid())).optional().default({}),
 })
 
 export const PUT = withAuth<{ customerId: string }>(
@@ -101,13 +105,13 @@ export const PUT = withAuth<{ customerId: string }>(
         recurringId = existing.id
         await tx
           .update(recurringOrders)
-          .set({ weekdays: body.weekdays })
+          .set({ weekdays: body.weekdays, dayOrders: body.dayOrders })
           .where(eq(recurringOrders.id, recurringId))
         await tx.delete(recurringOrderItems).where(eq(recurringOrderItems.recurringOrderId, recurringId))
       } else {
         const [created] = await tx
           .insert(recurringOrders)
-          .values({ bakeryId: auth.bakeryId, customerId, weekdays: body.weekdays })
+          .values({ bakeryId: auth.bakeryId, customerId, weekdays: body.weekdays, dayOrders: body.dayOrders })
           .returning({ id: recurringOrders.id })
         recurringId = created.id
       }

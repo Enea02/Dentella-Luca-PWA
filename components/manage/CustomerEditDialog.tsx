@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { format } from 'date-fns'
+import { it } from 'date-fns/locale'
 import { useSWRConfig } from 'swr'
 import { useCustomers, useProducts, useSections } from '@/hooks/useData'
 import { useAuth } from '@/hooks/useAuth'
@@ -11,10 +13,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import type { Customer, RecurringOverrideItem, Weekday } from '@/lib/types'
-import { GripVertical, Loader2, RotateCcw, X } from 'lucide-react'
+import { Calendar, GripVertical, Loader2, RotateCcw, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const WEEKDAYS: { value: Weekday; label: string }[] = [
@@ -65,7 +69,12 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
   const [weekdays, setWeekdays] = useState<Weekday[]>([])
   const [baseItems, setBaseItems] = useState<DraftItem[]>([])
   const [overrides, setOverrides] = useState<Record<number, DraftOverride[]>>({})
+  // Per-weekday custom display order (productIds). Absent = follow base order.
+  const [dayOrders, setDayOrders] = useState<Record<number, string[]>>({})
   const [tab, setTab] = useState<Tab>('base')
+  // Inclusive suspension range ('' = no bound).
+  const [suspendedFrom, setSuspendedFrom] = useState('')
+  const [suspendedTo, setSuspendedTo] = useState('')
 
   const [addProductId, setAddProductId] = useState('')
   const [addUnit, setAddUnit] = useState<'pieces' | 'kg'>('pieces')
@@ -102,6 +111,12 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
     }))
     .filter((g) => g.products.length > 0)
 
+  // Products whose section is "pinned to bottom" stay below the others in the template.
+  const pinnedProductIds = useMemo(() => {
+    const pinnedSections = new Set(sections.filter((s) => s.pinBottom).map((s) => s.name))
+    return new Set(products.filter((p) => pinnedSections.has(p.section)).map((p) => p.id))
+  }, [sections, products])
+
   useEffect(() => {
     if (!open) return
     let cancelled = false
@@ -111,13 +126,19 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
         if (cancelled) return
         setWeekdays(recurring?.weekdays ?? [])
         setBaseItems(
-          (recurring?.base ?? []).map((item) => ({
-            localId: `${item.productId}-${Math.random()}`,
-            productId: item.productId,
-            quantity: item.quantity,
-            unit: item.unit,
-          })),
+          sortPinnedLast(
+            (recurring?.base ?? []).map((item) => ({
+              localId: `${item.productId}-${Math.random()}`,
+              productId: item.productId,
+              quantity: item.quantity,
+              unit: item.unit,
+            })),
+            pinnedProductIds,
+          ),
         )
+        const dO: Record<number, string[]> = {}
+        for (const [wd, ids] of Object.entries(recurring?.dayOrders ?? {})) dO[Number(wd)] = ids
+        setDayOrders(dO)
         const ov: Record<number, DraftOverride[]> = {}
         for (const [wd, items] of Object.entries(recurring?.overrides ?? {})) {
           ov[Number(wd)] = items.map((it) => ({
@@ -130,6 +151,8 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
         setOverrides(ov)
       })
 
+    setSuspendedFrom(customer?.suspendedFrom ?? '')
+    setSuspendedTo(customer?.suspendedTo ?? '')
     if (customer) {
       setName(customer.name)
       const fixed = customer.type === 'fixed'
@@ -137,12 +160,12 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
       if (fixed) {
         load(customer.id)
       } else {
-        setWeekdays([]); setBaseItems([]); setOverrides({})
+        setWeekdays([]); setBaseItems([]); setOverrides({}); setDayOrders({})
       }
     } else {
       setName('')
       setIsFixed(!!copyFromCustomerId)
-      setWeekdays([]); setBaseItems([]); setOverrides({})
+      setWeekdays([]); setBaseItems([]); setOverrides({}); setDayOrders({})
       if (copyFromCustomerId) load(copyFromCustomerId)
     }
     setTab('base')
@@ -151,6 +174,8 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
     return () => {
       cancelled = true
     }
+    // pinnedProductIds is read once at load time; re-running on its change would wipe edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customer, open, copyFromCustomerId])
 
   function toggleWeekday(day: Weekday) {
@@ -159,6 +184,10 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
       if (has) {
         // Deselecting a day drops its overrides and resets the active tab if needed.
         setOverrides((o) => {
+          const { [day]: _drop, ...rest } = o
+          return rest
+        })
+        setDayOrders((o) => {
           const { [day]: _drop, ...rest } = o
           return rest
         })
@@ -173,10 +202,15 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
   function addBaseItem() {
     const qty = parseFloat(addQty)
     if (!addProductId || isNaN(qty) || qty <= 0) return
-    setBaseItems((prev) => [
-      ...prev,
-      { localId: `${Date.now()}-${Math.random()}`, productId: addProductId, quantity: qty, unit: addUnit },
-    ])
+    setBaseItems((prev) => {
+      const item = { localId: `${Date.now()}-${Math.random()}`, productId: addProductId, quantity: qty, unit: addUnit }
+      // A non-pinned product goes above the pinned-to-bottom block.
+      const firstPinned = pinnedProductIds.has(addProductId)
+        ? -1
+        : prev.findIndex((i) => pinnedProductIds.has(i.productId))
+      if (firstPinned === -1) return [...prev, item]
+      return [...prev.slice(0, firstPinned), item, ...prev.slice(firstPinned)]
+    })
     setAddProductId(''); setAddQty('')
   }
   function removeBaseItem(localId: string) {
@@ -238,6 +272,12 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
       return
     }
 
+    if (suspendedFrom && suspendedTo && suspendedFrom > suspendedTo) {
+      toast.error('La data di fine sospensione è precedente a quella di inizio')
+      return
+    }
+    const suspension = { suspendedFrom: suspendedFrom || null, suspendedTo: suspendedTo || null }
+
     // Build the payload: base + pruned per-weekday overrides (only rows that actually
     // differ from base or remove/add a product, and only for selected weekdays).
     const base = baseItems.map(({ productId, quantity, unit }) => ({
@@ -258,16 +298,21 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
         })
       if (pruned.length > 0) overridesPayload[day] = pruned
     }
+    const dayOrdersPayload: Record<number, string[]> = {}
+    for (const day of weekdays) {
+      if (dayOrders[day]?.length) dayOrdersPayload[day] = dayOrders[day]
+    }
 
     setIsLoading(true)
     try {
       if (isNew) {
         const newCustomer = await create({ name: name.trim(), type: isFixed ? 'fixed' : 'single' })
-        if (isFixed) await upsertRecurringOrder(newCustomer.id, weekdays, base, overridesPayload)
+        if (suspension.suspendedFrom || suspension.suspendedTo) await update(newCustomer.id, suspension)
+        if (isFixed) await upsertRecurringOrder(newCustomer.id, weekdays, base, overridesPayload, dayOrdersPayload)
         toast.success('Cliente creato')
       } else {
-        await update(customer.id, { name: name.trim(), type: isFixed ? 'fixed' : 'single' })
-        if (isFixed) await upsertRecurringOrder(customer.id, weekdays, base, overridesPayload)
+        await update(customer.id, { name: name.trim(), type: isFixed ? 'fixed' : 'single', ...suspension })
+        if (isFixed) await upsertRecurringOrder(customer.id, weekdays, base, overridesPayload, dayOrdersPayload)
         toast.success('Cliente aggiornato')
       }
       // The recurring template + customer name/type feed the COMPUTED orders view,
@@ -318,9 +363,42 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
                 checked={isFixed}
                 onCheckedChange={(val) => {
                   setIsFixed(val)
-                  if (!val) { setWeekdays([]); setBaseItems([]); setOverrides({}); setTab('base') }
+                  if (!val) { setWeekdays([]); setBaseItems([]); setOverrides({}); setDayOrders({}); setTab('base') }
                 }}
               />
+            </div>
+
+            {/* Suspension period: no recurring order is computed on these dates */}
+            <div className="space-y-1.5 rounded-2xl border border-slate-200 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Sospensione (periodo)</Label>
+                {(suspendedFrom || suspendedTo) && (
+                  <button
+                    type="button"
+                    onClick={() => { setSuspendedFrom(''); setSuspendedTo('') }}
+                    className="text-[11px] text-slate-400 hover:text-red-600"
+                  >
+                    Rimuovi
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <SuspensionDatePicker
+                  label="Dal"
+                  value={suspendedFrom}
+                  onChange={setSuspendedFrom}
+                  max={suspendedTo || undefined}
+                />
+                <SuspensionDatePicker
+                  label="Al"
+                  value={suspendedTo}
+                  onChange={setSuspendedTo}
+                  min={suspendedFrom || undefined}
+                />
+              </div>
+              <p className="text-[11px] leading-tight text-slate-400">
+                Nei giorni indicati (inclusi) l&apos;ordine fisso non viene applicato.
+              </p>
             </div>
 
             {isFixed && (
@@ -441,6 +519,15 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
                       day={tab}
                       baseItems={baseItems}
                       overrides={overrides[tab] ?? []}
+                      dayOrder={dayOrders[tab]}
+                      canReorder={canReorder}
+                      onReorder={(ids) => setDayOrders((prev) => ({ ...prev, [tab]: ids }))}
+                      onResetOrder={() =>
+                        setDayOrders((prev) => {
+                          const { [tab]: _drop, ...rest } = prev
+                          return rest
+                        })
+                      }
                       productName={productName}
                       onSetOverride={(productId, patch) => setOverride(tab, productId, patch)}
                       onClearOverride={(productId) => clearOverride(tab, productId)}
@@ -529,34 +616,210 @@ export function CustomerEditDialog({ customer, open, onClose, copyFromCustomerId
   )
 }
 
+// --- Suspension date picker (same look as the TopNav day selector) ----------
+
+const toDate = (iso: string) => new Date(iso + 'T00:00:00')
+
+function SuspensionDatePicker({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+}: {
+  label: string
+  value: string // YYYY-MM-DD or ''
+  onChange: (value: string) => void
+  min?: string
+  max?: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="space-y-0.5">
+      <span className="text-[11px] text-slate-500">{label}</span>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(
+              'h-10 md:h-8 w-full px-2 text-xs font-medium rounded-lg gap-1 justify-center',
+              !value && 'text-slate-400',
+            )}
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            {value ? format(toDate(value), 'EEE d MMM yyyy', { locale: it }) : 'Scegli giorno'}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <CalendarComponent
+            mode="single"
+            selected={value ? toDate(value) : undefined}
+            defaultMonth={value ? toDate(value) : min ? toDate(min) : undefined}
+            onSelect={(date) => {
+              if (date) {
+                onChange(format(date, 'yyyy-MM-dd'))
+                setOpen(false)
+              }
+            }}
+            disabled={[
+              ...(min ? [{ before: toDate(min) }] : []),
+              ...(max ? [{ after: toDate(max) }] : []),
+            ]}
+            locale={it}
+          />
+          {value && (
+            <div className="border-t border-slate-100 p-2">
+              <button
+                type="button"
+                onClick={() => { onChange(''); setOpen(false) }}
+                className="w-full rounded-lg py-1.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-red-600"
+              >
+                Togli data
+              </button>
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
+// Stable sort: items of pinned-to-bottom sections after the others.
+function sortPinnedLast<T extends { productId: string }>(items: T[], pinned: Set<string>): T[] {
+  return [...items].sort((a, b) => Number(pinned.has(a.productId)) - Number(pinned.has(b.productId)))
+}
+
 // --- Weekday override panel -------------------------------------------------
 
 interface WeekdayPanelProps {
   day: Weekday
   baseItems: DraftItem[]
   overrides: DraftOverride[]
+  dayOrder?: string[]
+  canReorder: boolean
+  onReorder: (orderedProductIds: string[]) => void
+  onResetOrder: () => void
   productName: (id: string) => string
   onSetOverride: (productId: string, patch: Partial<DraftOverride>) => void
   onClearOverride: (productId: string) => void
 }
 
-function WeekdayPanel({ day, baseItems, overrides, productName, onSetOverride, onClearOverride }: WeekdayPanelProps) {
+function WeekdayPanel({
+  day,
+  baseItems,
+  overrides,
+  dayOrder,
+  canReorder,
+  onReorder,
+  onResetOrder,
+  productName,
+  onSetOverride,
+  onClearOverride,
+}: WeekdayPanelProps) {
   const ovByProduct = new Map(overrides.map((o) => [o.productId, o]))
-  const baseIds = new Set(baseItems.map((b) => b.productId))
+  const baseByProduct = new Map(baseItems.map((b) => [b.productId, b]))
   const label = WEEKDAYS.find((d) => d.value === day)?.label ?? ''
-  const addedRows = overrides.filter((o) => !baseIds.has(o.productId))
+  const addedRows = overrides.filter((o) => !baseByProduct.has(o.productId))
+
+  // Default order: base list, then products added only for this day. A custom
+  // per-day order (dayOrder) wins; ids it doesn't list keep the default order after.
+  const defaultIds = [...baseItems.map((b) => b.productId), ...addedRows.map((o) => o.productId)]
+  const orderedIds = dayOrder?.length
+    ? (() => {
+        const rank = new Map(dayOrder.map((id, i) => [id, i]))
+        return defaultIds
+          .map((id, i) => ({ id, r: rank.get(id) ?? dayOrder.length + i }))
+          .sort((a, b) => a.r - b.r)
+          .map(({ id }) => id)
+      })()
+    : defaultIds
+
+  const { displayItems, registerRow, dragHandleProps, draggingId } = useDragReorder(
+    orderedIds,
+    (id) => id,
+    onReorder,
+  )
+
+  const grip = (productId: string) =>
+    canReorder && (
+      <div
+        {...dragHandleProps(productId)}
+        className="shrink-0 cursor-grab touch-none select-none text-slate-300 transition-colors hover:text-slate-500 active:cursor-grabbing"
+        aria-label="Trascina per riordinare"
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </div>
+    )
+
+  const rowClass = (productId: string) =>
+    cn('rounded-lg transition-colors', draggingId === productId && 'bg-slate-100 ring-2 ring-slate-300')
 
   return (
     <>
-      <Label className="text-xs">Articoli di {label}</Label>
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">Articoli di {label}</Label>
+        {canReorder && !!dayOrder?.length && (
+          <button
+            type="button"
+            onClick={onResetOrder}
+            className="text-[11px] text-slate-400 hover:text-slate-700"
+            title="Torna all'ordine della base"
+          >
+            Ordine base
+          </button>
+        )}
+      </div>
       <div className="space-y-1.5">
-        {baseItems.length === 0 && addedRows.length === 0 && (
+        {displayItems.length === 0 && (
           <p className="text-xs text-slate-400">Nessun articolo. La base è vuota.</p>
         )}
 
-        {/* Base products, with per-day override / removal */}
-        {baseItems.map((b) => {
-          const o = ovByProduct.get(b.productId)
+        {displayItems.map((productId) => {
+          const b = baseByProduct.get(productId)
+          const o = ovByProduct.get(productId)
+
+          // Product added only for this weekday
+          if (!b) {
+            if (!o) return null
+            return (
+              <div key={productId} ref={registerRow(productId)} className={cn('flex items-center gap-1.5', rowClass(productId))}>
+                {grip(productId)}
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-xs text-slate-700">{productName(productId)}</span>
+                  <span className="text-[10px] font-medium text-emerald-600">solo {label}</span>
+                </div>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0.01"
+                  step="any"
+                  value={o.quantity}
+                  onChange={(e) => onSetOverride(productId, { quantity: e.target.value })}
+                  className="w-14 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-center text-xs outline-none"
+                />
+                <Select value={o.unit} onValueChange={(v) => onSetOverride(productId, { unit: v as 'pieces' | 'kg' })}>
+                  <SelectTrigger className="w-[3.5rem] rounded-lg text-xs h-7 px-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pieces">pz</SelectItem>
+                    <SelectItem value="kg">kg</SelectItem>
+                  </SelectContent>
+                </Select>
+                <button
+                  type="button"
+                  title="Rimuovi"
+                  onClick={() => onClearOverride(productId)}
+                  className="text-slate-300 transition-colors hover:text-red-500"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )
+          }
+
+          // Base product, with per-day override / removal
           const removed = o?.removed ?? false
           const qty = o && !o.removed ? o.quantity : b.quantity
           const unit = o && !o.removed ? o.unit : b.unit
@@ -564,15 +827,16 @@ function WeekdayPanel({ day, baseItems, overrides, productName, onSetOverride, o
 
           if (removed) {
             return (
-              <div key={b.productId} className="flex items-center gap-1.5 rounded-lg bg-red-50/60 px-1 py-1">
+              <div key={productId} ref={registerRow(productId)} className={cn('flex items-center gap-1.5 bg-red-50/60 px-1 py-1', rowClass(productId))}>
+                {grip(productId)}
                 <span className="flex-1 truncate text-xs text-slate-400 line-through">
-                  {productName(b.productId)}
+                  {productName(productId)}
                 </span>
                 <span className="text-[10px] font-medium text-red-500">rimosso</span>
                 <button
                   type="button"
                   title="Reintegra dalla base"
-                  onClick={() => onClearOverride(b.productId)}
+                  onClick={() => onClearOverride(productId)}
                   className="text-slate-400 transition-colors hover:text-slate-700"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
@@ -582,9 +846,10 @@ function WeekdayPanel({ day, baseItems, overrides, productName, onSetOverride, o
           }
 
           return (
-            <div key={b.productId} className="flex items-center gap-1.5">
+            <div key={productId} ref={registerRow(productId)} className={cn('flex items-center gap-1.5', rowClass(productId))}>
+              {grip(productId)}
               <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-xs text-slate-700">{productName(b.productId)}</span>
+                <span className="truncate text-xs text-slate-700">{productName(productId)}</span>
                 {changed && (
                   <span className="text-[10px] text-slate-400">base: {b.quantity} {b.unit === 'kg' ? 'kg' : 'pz'}</span>
                 )}
@@ -595,13 +860,13 @@ function WeekdayPanel({ day, baseItems, overrides, productName, onSetOverride, o
                 min="0.01"
                 step="any"
                 value={qty}
-                onChange={(e) => onSetOverride(b.productId, { quantity: e.target.value, removed: false })}
+                onChange={(e) => onSetOverride(productId, { quantity: e.target.value, removed: false })}
                 className={cn(
                   'w-14 rounded-lg border px-2 py-1 text-center text-xs outline-none',
                   changed ? 'border-amber-300 bg-amber-50' : 'border-slate-200',
                 )}
               />
-              <Select value={unit} onValueChange={(v) => onSetOverride(b.productId, { unit: v as 'pieces' | 'kg', removed: false })}>
+              <Select value={unit} onValueChange={(v) => onSetOverride(productId, { unit: v as 'pieces' | 'kg', removed: false })}>
                 <SelectTrigger className="w-[3.5rem] rounded-lg text-xs h-7 px-2">
                   <SelectValue />
                 </SelectTrigger>
@@ -613,7 +878,7 @@ function WeekdayPanel({ day, baseItems, overrides, productName, onSetOverride, o
               <button
                 type="button"
                 title="Togli per questo giorno"
-                onClick={() => onSetOverride(b.productId, { removed: true })}
+                onClick={() => onSetOverride(productId, { removed: true })}
                 className="text-slate-300 transition-colors hover:text-red-500"
               >
                 <X className="h-3.5 w-3.5" />
@@ -621,42 +886,6 @@ function WeekdayPanel({ day, baseItems, overrides, productName, onSetOverride, o
             </div>
           )
         })}
-
-        {/* Products added only for this weekday */}
-        {addedRows.map((o) => (
-          <div key={o.productId} className="flex items-center gap-1.5">
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-xs text-slate-700">{productName(o.productId)}</span>
-              <span className="text-[10px] font-medium text-emerald-600">solo {label}</span>
-            </div>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0.01"
-              step="any"
-              value={o.quantity}
-              onChange={(e) => onSetOverride(o.productId, { quantity: e.target.value })}
-              className="w-14 rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-center text-xs outline-none"
-            />
-            <Select value={o.unit} onValueChange={(v) => onSetOverride(o.productId, { unit: v as 'pieces' | 'kg' })}>
-              <SelectTrigger className="w-[3.5rem] rounded-lg text-xs h-7 px-2">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pieces">pz</SelectItem>
-                <SelectItem value="kg">kg</SelectItem>
-              </SelectContent>
-            </Select>
-            <button
-              type="button"
-              title="Rimuovi"
-              onClick={() => onClearOverride(o.productId)}
-              className="text-slate-300 transition-colors hover:text-red-500"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
       </div>
     </>
   )

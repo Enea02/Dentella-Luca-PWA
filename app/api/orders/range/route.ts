@@ -11,7 +11,7 @@ import {
 } from '@/lib/db/schema'
 import { withAuth, jsonWithCache } from '@/lib/api/handler'
 import { dayOfWeek, getOrderStatus } from '@/lib/utils'
-import { effectiveRecurringItems, type RawRecurringItem } from '@/lib/orders/recurring'
+import { effectiveRecurringItems, isSuspendedOn, type RawRecurringItem } from '@/lib/orders/recurring'
 import type { ComputedDayOrder, OrderItem } from '@/lib/types'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -52,7 +52,13 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
   // 4 parallel queries for the whole range.
   const [allCustomers, recurringRows, dailyRows, statusRows] = await Promise.all([
     db
-      .select({ id: customers.id, name: customers.name, type: customers.type })
+      .select({
+        id: customers.id,
+        name: customers.name,
+        type: customers.type,
+        suspendedFrom: customers.suspendedFrom,
+        suspendedTo: customers.suspendedTo,
+      })
       .from(customers)
       .where(and(eq(customers.bakeryId, auth.bakeryId), eq(customers.active, true))),
     db
@@ -60,6 +66,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
         id: recurringOrders.id,
         customerId: recurringOrders.customerId,
         weekdays: recurringOrders.weekdays,
+        dayOrders: recurringOrders.dayOrders,
       })
       .from(recurringOrders)
       .where(eq(recurringOrders.bakeryId, auth.bakeryId)),
@@ -78,6 +85,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
         customerId: dailyItemStatus.customerId,
         productId: dailyItemStatus.productId,
         done: dailyItemStatus.done,
+        productionDone: dailyItemStatus.productionDone,
         variant: dailyItemStatus.variant,
       })
       .from(dailyItemStatus)
@@ -140,6 +148,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
             quantity: dailyOrderItems.quantity,
             unit: dailyOrderItems.unit,
             done: dailyOrderItems.done,
+            productionDone: dailyOrderItems.productionDone,
             variant: dailyOrderItems.variant,
             position: dailyOrderItems.position,
           })
@@ -161,6 +170,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
       quantity: Number(it.quantity),
       unit: it.unit,
       done: it.done,
+      ...(it.productionDone ? { productionDone: true } : {}),
       ...(it.variant != null ? { variant: it.variant } : {}),
     })
     itemsByDaily.set(it.dailyOrderId, arr)
@@ -175,22 +185,29 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
   }
 
   // Status overrides keyed by `date|customerId|productId`.
-  const statusByKey = new Map<string, { done: boolean; variant: string | null }>()
+  const statusByKey = new Map<string, { done: boolean; productionDone: boolean; variant: string | null }>()
   for (const s of statusRows) {
-    statusByKey.set(`${s.date}|${s.customerId}|${s.productId}`, { done: s.done, variant: s.variant })
+    statusByKey.set(`${s.date}|${s.customerId}|${s.productId}`, { done: s.done, productionDone: s.productionDone, variant: s.variant })
   }
 
   // Assemble per-date, mirroring app/api/orders/route.ts merge semantics.
   const result: { date: string; orders: ComputedDayOrder[] }[] = dates.map((date) => {
     const weekday = dayOfWeek(date)
-    const activeRecurring = recurringRows.filter((r) => (r.weekdays ?? []).includes(weekday))
+    const activeRecurring = recurringRows.filter((r) => {
+      const c = customerById.get(r.customerId)
+      return (r.weekdays ?? []).includes(weekday) && !!c && !isSuspendedOn(c, date)
+    })
     const orderMap = new Map<string, ComputedDayOrder>()
 
     // 1. Recurring orders for this weekday.
     for (const r of activeRecurring) {
       const customer = customerById.get(r.customerId)
       if (!customer) continue
-      const items: OrderItem[] = effectiveRecurringItems(rawByOrder.get(r.id) ?? [], weekday).map(
+      const items: OrderItem[] = effectiveRecurringItems(
+        rawByOrder.get(r.id) ?? [],
+        weekday,
+        r.dayOrders?.[String(weekday)],
+      ).map(
         (it) => {
           const status = statusByKey.get(`${date}|${r.customerId}|${it.productId}`)
           return {
@@ -198,6 +215,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
             quantity: it.quantity,
             unit: it.unit,
             done: status?.done ?? false,
+            ...(status?.productionDone ? { productionDone: true } : {}),
             ...(status?.variant != null ? { variant: status.variant } : {}),
           }
         },

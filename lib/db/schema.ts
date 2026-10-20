@@ -12,6 +12,7 @@ import {
   index,
   pgEnum,
   smallint,
+  jsonb,
 } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 
@@ -28,6 +29,8 @@ export const bakeries = pgTable('bakeries', {
   slug: text('slug').notNull().unique(),
   // Hour (0-23) after which the app defaults to the NEXT day's orders. null = off.
   orderCutoffHour: integer('order_cutoff_hour'),
+  // When true, the "Foglio" (sheet) section is hidden from the navigation for everyone.
+  sheetHidden: boolean('sheet_hidden').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
@@ -60,6 +63,9 @@ export const sections = pgTable(
     name: text('name').notNull(),
     color: text('color').notNull(),
     order: integer('order').notNull().default(0),
+    // When true, this section's NOT-yet-done items sink to the bottom of an order
+    // (still above the done ones), and to the bottom of the recurring-template editor.
+    pinBottom: boolean('pin_bottom').notNull().default(false),
   },
   (t) => [
     unique('sections_bakery_name_key').on(t.bakeryId, t.name),
@@ -99,6 +105,10 @@ export const customers = pgTable(
     name: text('name').notNull(),
     type: customerTypeEnum('type').notNull().default('single'),
     active: boolean('active').notNull().default(true),
+    // Inclusive suspension period: on these dates the customer's recurring template is
+    // not applied (no computed order). Either bound may be null (open-ended).
+    suspendedFrom: date('suspended_from'),
+    suspendedTo: date('suspended_to'),
   },
   (t) => [index('customers_bakery_idx').on(t.bakeryId)],
 )
@@ -117,6 +127,9 @@ export const recurringOrders = pgTable(
       .references(() => customers.id, { onDelete: 'cascade' }),
     // weekdays stored as text[] of '1'..'7' for simplicity
     weekdays: smallint('weekdays').array().notNull().default(sql`'{}'::smallint[]`),
+    // Per-weekday display order: { "1": [productId, ...], ... }. When present for a
+    // weekday, it overrides the base position order for that day's effective items.
+    dayOrders: jsonb('day_orders').$type<Record<string, string[]>>().notNull().default({}),
   },
   (t) => [index('recurring_orders_bakery_idx').on(t.bakeryId)],
 )
@@ -176,6 +189,9 @@ export const dailyOrderItems = pgTable(
     quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
     unit: unitEnum('unit').notNull(),
     done: boolean('done').notNull().default(false),
+    // Marked from the Production view only: colors the production cell without
+    // marking the item done in the order view.
+    productionDone: boolean('production_done').notNull().default(false),
     variant: text('variant'),
     position: integer('position').notNull().default(0),
   },
@@ -206,6 +222,7 @@ export const dailyItemStatus = pgTable(
       .notNull()
       .references(() => products.id, { onDelete: 'cascade' }),
     done: boolean('done').notNull().default(false),
+    productionDone: boolean('production_done').notNull().default(false),
     variant: text('variant'),
   },
   (t) => [

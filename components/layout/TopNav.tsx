@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
@@ -12,6 +13,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet'
 import { useAuth } from '@/hooks/useAuth'
 import { useAppStore } from '@/lib/store'
+import { useBakery } from '@/hooks/useData'
 import { can } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { RoleBadge } from './RoleBadge'
@@ -35,10 +37,17 @@ export function TopNav() {
     can(user, 'customers:write') || can(user, 'products:write') || can(user, 'permissions:manage')
   const canStats = can(user, 'statistics:view')
   const canEditOrders = can(user, 'orders:edit')
+  const { bakery } = useBakery()
+  // The bakery settings come from the localStorage-backed SWR cache, which the server
+  // doesn't have: deciding on the first render would make the nav differ between SSR
+  // and hydration. Only show "Foglio" once mounted on the client.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const showSheet = mounted && canEditOrders && !!bakery && !bakery.sheetHidden
 
   const allLinks = [
     ...navLinks,
-    ...(canEditOrders ? [{ href: '/sheet', label: 'Foglio' }] : []),
+    ...(showSheet ? [{ href: '/sheet', label: 'Foglio' }] : []),
     ...(canManage ? [{ href: '/manage', label: 'Gestione' }] : []),
     ...(canStats ? [{ href: '/statistics', label: 'Statistiche' }] : []),
   ]
@@ -108,8 +117,16 @@ export function TopNav() {
             </SheetContent>
           </Sheet>
 
-          <Link href="/orders" className="font-bold text-lg text-slate-900">
-            Panificio
+          <Link href="/orders" className="flex items-center gap-2 font-bold text-lg text-slate-900">
+            <Image
+              src="/logo.png"
+              alt="Dentella – Alta Panificazione"
+              width={40}
+              height={40}
+              priority
+              className="h-9 w-9 md:h-10 md:w-10 rounded-full"
+            />
+            <span className="hidden lg:inline">Panificio</span>
           </Link>
           <Button
             variant="ghost"

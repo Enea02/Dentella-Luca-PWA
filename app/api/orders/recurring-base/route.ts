@@ -4,7 +4,7 @@ import { db } from '@/lib/db/client'
 import { customers, products, recurringOrderItems, recurringOrders } from '@/lib/db/schema'
 import { withAuth } from '@/lib/api/handler'
 import { dayOfWeek, toPieces } from '@/lib/utils'
-import { effectiveRecurringItems, type RawRecurringItem } from '@/lib/orders/recurring'
+import { effectiveRecurringItems, isSuspendedOn, type RawRecurringItem } from '@/lib/orders/recurring'
 
 /**
  * Baseline of the day: the "fixed" production if no manual edits were made — i.e. the
@@ -23,7 +23,11 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
 
   const [activeCustomers, recurringRows, piecesRows] = await Promise.all([
     db
-      .select({ id: customers.id })
+      .select({
+        id: customers.id,
+        suspendedFrom: customers.suspendedFrom,
+        suspendedTo: customers.suspendedTo,
+      })
       .from(customers)
       .where(and(eq(customers.bakeryId, auth.bakeryId), eq(customers.active, true))),
     db
@@ -40,7 +44,10 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
       .where(eq(products.bakeryId, auth.bakeryId)),
   ])
 
-  const activeIds = new Set(activeCustomers.map((c) => c.id))
+  // Customers suspended on this date don't contribute to the baseline.
+  const activeIds = new Set(
+    activeCustomers.filter((c) => !isSuspendedOn(c, date)).map((c) => c.id),
+  )
   const piecesPerKgById = new Map(piecesRows.map((p) => [p.id, p.piecesPerKg]))
 
   // Only active customers present this weekday contribute to the base.

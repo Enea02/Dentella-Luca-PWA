@@ -3,6 +3,7 @@ import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import {
+  customers,
   dailyItemStatus,
   dailyOrderItems,
   dailyOrders,
@@ -12,7 +13,7 @@ import {
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
 import { dayOfWeek } from '@/lib/utils'
-import { effectiveRecurringItems, type RawRecurringItem } from '@/lib/orders/recurring'
+import { effectiveRecurringItems, isSuspendedOn, type RawRecurringItem } from '@/lib/orders/recurring'
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
@@ -54,12 +55,20 @@ async function getOrCreateDailyOrder(
   // Seed from the recurring order if it covers this weekday.
   const weekday = dayOfWeek(date)
   const [recurring] = await tx
-    .select({ id: recurringOrders.id, weekdays: recurringOrders.weekdays })
+    .select({
+      id: recurringOrders.id,
+      weekdays: recurringOrders.weekdays,
+      dayOrders: recurringOrders.dayOrders,
+      suspendedFrom: customers.suspendedFrom,
+      suspendedTo: customers.suspendedTo,
+    })
     .from(recurringOrders)
+    .innerJoin(customers, eq(customers.id, recurringOrders.customerId))
     .where(and(eq(recurringOrders.bakeryId, bakeryId), eq(recurringOrders.customerId, customerId)))
     .limit(1)
 
-  if (recurring && (recurring.weekdays ?? []).includes(weekday)) {
+  // A suspended customer has no template order on this date: nothing to seed.
+  if (recurring && (recurring.weekdays ?? []).includes(weekday) && !isSuspendedOn(recurring, date)) {
     const rawRows = await tx
       .select({
         productId: recurringOrderItems.productId,
@@ -82,7 +91,7 @@ async function getOrCreateDailyOrder(
       weekday: it.weekday,
       removed: it.removed,
     }))
-    const effective = effectiveRecurringItems(recItems, weekday)
+    const effective = effectiveRecurringItems(recItems, weekday, recurring.dayOrders?.[String(weekday)])
 
     if (effective.length > 0) {
       // Carry over per-day done/variant overrides so they survive materialization.
@@ -90,6 +99,7 @@ async function getOrCreateDailyOrder(
         .select({
           productId: dailyItemStatus.productId,
           done: dailyItemStatus.done,
+          productionDone: dailyItemStatus.productionDone,
           variant: dailyItemStatus.variant,
         })
         .from(dailyItemStatus)
@@ -113,6 +123,7 @@ async function getOrCreateDailyOrder(
               quantity: String(it.quantity),
               unit: it.unit,
               done: s?.done ?? false,
+              productionDone: s?.productionDone ?? false,
               variant: s?.variant ?? null,
               position: i,
             }

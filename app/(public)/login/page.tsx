@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -97,6 +98,14 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
       <Card className="w-full max-w-sm rounded-3xl shadow-lg">
         <CardHeader className="text-center">
+          <Image
+            src="/logo.png"
+            alt="Dentella – Alta Panificazione"
+            width={128}
+            height={128}
+            priority
+            className="mx-auto mb-2 h-32 w-32 rounded-full"
+          />
           <CardTitle className="text-2xl font-bold text-slate-900">Panificio</CardTitle>
           <CardDescription className="text-slate-600">
             Accedi al gestionale

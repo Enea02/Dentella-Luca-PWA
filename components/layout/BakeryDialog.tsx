@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { Loader2, Pencil, Trash2, UserPlus, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -94,6 +95,15 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
     try {
       await updateSettings({ orderCutoffHour })
       toast.success('Orario aggiornato')
+    } catch {
+      toast.error('Errore durante il salvataggio')
+    }
+  }
+
+  async function handleSheetHiddenChange(sheetHidden: boolean) {
+    try {
+      await updateSettings({ sheetHidden })
+      toast.success(sheetHidden ? 'Foglio nascosto' : 'Foglio visibile')
     } catch {
       toast.error('Errore durante il salvataggio')
     }
@@ -211,6 +221,21 @@ export function BakeryDialog({ open, onClose }: BakeryDialogProps) {
                     </div>
                     <p className="text-xs text-slate-400">
                       Dopo quest&apos;ora l&apos;app mostra gli ordini del giorno successivo.
+                    </p>
+                  </div>
+                )}
+
+                {canEditBakery && (
+                  <div className="space-y-2 border-t border-slate-100 pt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-slate-500">Nascondi sezione Foglio</span>
+                      <Switch
+                        checked={bakery?.sheetHidden ?? false}
+                        onCheckedChange={handleSheetHiddenChange}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      Toglie la voce &quot;Foglio&quot; dal menu per tutti gli utenti.
                     </p>
                   </div>
                 )}

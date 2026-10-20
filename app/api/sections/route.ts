@@ -9,7 +9,13 @@ import { SECTION_COLOR_PALETTE } from '@/lib/constants'
 
 export const GET = withAuth(async (_req, { auth }) => {
   const rows = await db
-    .select({ id: sections.id, name: sections.name, color: sections.color, order: sections.order })
+    .select({
+        id: sections.id,
+        name: sections.name,
+        color: sections.color,
+        order: sections.order,
+        pinBottom: sections.pinBottom,
+      })
     .from(sections)
     .where(eq(sections.bakeryId, auth.bakeryId))
     .orderBy(asc(sections.order))
@@ -38,7 +44,13 @@ export const POST = withAuth(
     const [created] = await db
       .insert(sections)
       .values({ bakeryId: auth.bakeryId, name, color, order: nextOrder })
-      .returning({ id: sections.id, name: sections.name, color: sections.color, order: sections.order })
+      .returning({
+        id: sections.id,
+        name: sections.name,
+        color: sections.color,
+        order: sections.order,
+        pinBottom: sections.pinBottom,
+      })
 
     await notify(auth.bakeryId, { type: 'products.updated' })
     return NextResponse.json(created, { status: 201 })

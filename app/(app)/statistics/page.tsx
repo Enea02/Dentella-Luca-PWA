@@ -6,7 +6,7 @@ import { it } from 'date-fns/locale'
 import { ShieldAlert, Loader2, Calendar } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStatistics } from '@/hooks/useData'
-import type { CustomerStat, ProductStat, CustomerProductStat } from '@/hooks/useData'
+import type { ProductStat, CustomerProductStat, StatsUnit } from '@/hooks/useData'
 import { can } from '@/lib/auth/permissions'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -69,65 +69,6 @@ function StatCard({ label, value, accent }: {
 
 function Empty() {
   return <p className="py-10 text-center text-sm text-slate-400">Nessun dato nel periodo selezionato</p>
-}
-
-function CustomerTable({ rows }: { rows: CustomerStat[] }) {
-  if (rows.length === 0) return <Empty />
-  return (
-    <>
-      {/* Mobile: card list */}
-      <div className="md:hidden space-y-2">
-        {rows.map((r) => (
-          <div key={r.customerId} className="rounded-2xl border border-slate-200 p-3">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="min-w-0">
-                <p className="font-medium text-sm text-slate-900 truncate">{r.customerName}</p>
-                <p className="text-xs text-slate-400">
-                  {r.customerType === 'fixed' ? 'Fisso' : 'Giornaliero'} · {r.orderDays} giorni
-                </p>
-              </div>
-              <span className="text-sm font-semibold text-slate-700 shrink-0">{pct(r.doneQuantity, r.totalQuantity)}</span>
-            </div>
-            <div className="flex justify-between text-xs text-slate-500">
-              <span>Ord. <span className="text-slate-700 font-medium">{r.totalQuantity.toLocaleString('it')}</span></span>
-              <span>Evasa <span className="text-slate-700 font-medium">{r.doneQuantity.toLocaleString('it')}</span></span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Desktop: table */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
-              <th className="pb-2 font-medium">Cliente</th>
-              <th className="pb-2 font-medium text-right">Giorni</th>
-              <th className="pb-2 font-medium text-right">Qtà ord.</th>
-              <th className="pb-2 font-medium text-right">Qtà evasa</th>
-              <th className="pb-2 font-medium text-right">%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.customerId} className="border-b border-slate-50 hover:bg-slate-50">
-                <td className="py-2.5">
-                  <span className="font-medium text-slate-900">{r.customerName}</span>
-                  <span className="ml-2 text-xs text-slate-400">
-                    {r.customerType === 'fixed' ? 'Fisso' : 'Giorn.'}
-                  </span>
-                </td>
-                <td className="py-2.5 text-right text-slate-600">{r.orderDays}</td>
-                <td className="py-2.5 text-right text-slate-600">{r.totalQuantity.toLocaleString('it')}</td>
-                <td className="py-2.5 text-right text-slate-600">{r.doneQuantity.toLocaleString('it')}</td>
-                <td className="py-2.5 text-right font-semibold text-slate-700">{pct(r.doneQuantity, r.totalQuantity)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  )
 }
 
 function ProductTable({ rows }: { rows: ProductStat[] }) {
@@ -261,7 +202,9 @@ export default function StatisticsPage() {
   const [from, setFrom] = useState(presetRange('week').from)
   const [to, setTo] = useState(TODAY)
 
-  const { stats, isLoading } = useStatistics(from, to)
+  const [unit, setUnit] = useState<StatsUnit>('pieces')
+
+  const { stats, isLoading } = useStatistics(from, to, unit)
 
   if (!can(user, 'statistics:view')) {
     return (
@@ -358,6 +301,26 @@ export default function StatisticsPage() {
             </Popover>
           </div>
         </div>
+
+        {/* Display unit: converts via each product's pieces-per-kg (products without
+            a conversion factor stay in their own unit). */}
+        <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+          <span className="text-xs text-slate-500">Unità</span>
+          <div className="inline-flex rounded-xl bg-slate-100 p-1">
+            {([['pieces', 'Pezzi'], ['kg', 'Kg']] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setUnit(value)}
+                className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                  unit === value ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {isLoading ? (
@@ -372,7 +335,10 @@ export default function StatisticsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <StatCard label="Giorni attivi" value={stats.activeDays} />
             <StatCard label="Clienti serviti" value={stats.uniqueCustomers} />
-            <StatCard label="Quantità totale" value={stats.totalQuantityOrdered.toLocaleString('it')} />
+            <StatCard
+              label={`Quantità totale (${unit === 'kg' ? 'kg' : 'pz'})`}
+              value={stats.totalQuantityOrdered.toLocaleString('it', { maximumFractionDigits: 2 })}
+            />
             <StatCard
               label="Completamento"
               value={`${completionPct}%`}
@@ -382,14 +348,8 @@ export default function StatisticsPage() {
 
           {/* Detailed tabs */}
           <div className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 p-4">
-            <Tabs defaultValue="customer">
+            <Tabs defaultValue="product">
               <TabsList className="w-full rounded-xl bg-slate-100 p-1 mb-4">
-                <TabsTrigger
-                  value="customer"
-                  className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs"
-                >
-                  Per Cliente
-                </TabsTrigger>
                 <TabsTrigger
                   value="product"
                   className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs"
@@ -404,9 +364,6 @@ export default function StatisticsPage() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="customer">
-                <CustomerTable rows={stats.perCustomer} />
-              </TabsContent>
               <TabsContent value="product">
                 <ProductTable rows={stats.perProduct} />
               </TabsContent>

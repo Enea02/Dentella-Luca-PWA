@@ -58,9 +58,26 @@ export interface Statistics {
   perCustomerProduct: CustomerProductStat[]
 }
 
+export type StatsUnit = 'pieces' | 'kg'
+
+// Convert an item quantity to the requested display unit using the product's
+// piecesPerKg. Products without a conversion factor keep their own unit.
+function convertQty(
+  quantity: number,
+  unit: string,
+  target: StatsUnit,
+  piecesPerKg?: number,
+): { quantity: number; unit: string } {
+  if (unit === target || !piecesPerKg) return { quantity, unit }
+  return target === 'pieces'
+    ? { quantity: quantity * piecesPerKg, unit: 'pieces' }
+    : { quantity: quantity / piecesPerKg, unit: 'kg' }
+}
+
 function computeStats(
   data: { date: string; orders: ComputedDayOrder[] }[],
-  products: Product[]
+  products: Product[],
+  target: StatsUnit,
 ): Statistics {
   const productMap = new Map(products.map(p => [p.id, p]))
   const customerMap = new Map<string, CustomerStat>()
@@ -84,11 +101,14 @@ function computeStats(
       const cStat = customerMap.get(order.customerId)!
       cStat.orderDays++
 
-      for (const item of order.items) {
+      for (const rawItem of order.items) {
+        const product = productMap.get(rawItem.productId)
+        const converted = convertQty(rawItem.quantity, rawItem.unit, target, product?.piecesPerKg)
+        const item = { ...rawItem, quantity: converted.quantity, unit: converted.unit as typeof rawItem.unit }
+
         cStat.totalQuantity += item.quantity
         if (item.done) cStat.doneQuantity += item.quantity
 
-        const product = productMap.get(item.productId)
         if (!productStatMap.has(item.productId)) {
           productStatMap.set(item.productId, {
             productId: item.productId,
@@ -229,8 +249,18 @@ export function useOrders(date: string) {
       await mutate()
       await revalidateStats()
     },
-    toggleItem: async (customerId: string, productId: string, done: boolean) => {
-      // Optimistic update
+    // scope 'production': marks the production cell only (see /api/orders/toggle).
+    toggleItem: async (
+      customerId: string,
+      productId: string,
+      done: boolean,
+      scope: 'order' | 'production' = 'order',
+    ) => {
+      // Optimistic update — mirrors the server-side patch for each scope.
+      const patch: Partial<OrderItem> =
+        scope === 'production'
+          ? done ? { productionDone: true } : { productionDone: false, done: false }
+          : done ? { done: true } : { done: false, productionDone: false }
       mutate(
         (current) =>
           current?.map((order) =>
@@ -238,14 +268,14 @@ export function useOrders(date: string) {
               ? {
                   ...order,
                   items: order.items.map((item) =>
-                    item.productId === productId ? { ...item, done } : item
+                    item.productId === productId ? { ...item, ...patch } : item
                   ),
                 }
               : order
           ),
         false
       )
-      await ordersApi.toggleItem(date, customerId, productId, done)
+      await ordersApi.toggleItem(date, customerId, productId, done, scope)
       await mutate()
       await revalidateStats()
     },
@@ -360,7 +390,7 @@ export function useBakery() {
       await bakeryApi.update({ name })
       await mutate()
     },
-    updateSettings: async (updates: { name?: string; orderCutoffHour?: number | null }) => {
+    updateSettings: async (updates: { name?: string; orderCutoffHour?: number | null; sheetHidden?: boolean }) => {
       await bakeryApi.update(updates)
       await mutate()
     },
@@ -396,7 +426,7 @@ export function useUsers() {
 }
 
 // Statistics hook
-export function useStatistics(from: string, to: string) {
+export function useStatistics(from: string, to: string, unit: StatsUnit = 'pieces') {
   const { data: rangeData, isLoading: rangeLoading } = useSWR<{ date: string; orders: ComputedDayOrder[] }[]>(
     from && to ? ['statistics', from, to] : null,
     () => getOrdersForRange(from, to),
@@ -406,8 +436,8 @@ export function useStatistics(from: string, to: string) {
 
   const stats = useMemo(() => {
     if (!rangeData || !products.length) return null
-    return computeStats(rangeData, products)
-  }, [rangeData, products])
+    return computeStats(rangeData, products, unit)
+  }, [rangeData, products, unit])
 
   return { stats, isLoading: rangeLoading || productsLoading }
 }
@@ -442,6 +472,10 @@ export function useSections() {
     },
     reorder: async (orderedIds: string[]) => {
       await sectionsApi.reorder(orderedIds)
+      await mutate()
+    },
+    setPinBottom: async (id: string, pinBottom: boolean) => {
+      await sectionsApi.setPinBottom(id, pinBottom)
       await mutate()
     },
   }

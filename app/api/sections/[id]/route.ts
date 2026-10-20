@@ -9,6 +9,7 @@ import { notify } from '@/lib/realtime/notify'
 const UpdateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   color: z.string().min(1).optional(),
+  pinBottom: z.boolean().optional(),
 })
 
 export const PATCH = withAuth<{ id: string }>(
@@ -20,7 +21,13 @@ export const PATCH = withAuth<{ id: string }>(
       .update(sections)
       .set(updates)
       .where(and(eq(sections.id, id), eq(sections.bakeryId, auth.bakeryId)))
-      .returning({ id: sections.id, name: sections.name, color: sections.color, order: sections.order })
+      .returning({
+        id: sections.id,
+        name: sections.name,
+        color: sections.color,
+        order: sections.order,
+        pinBottom: sections.pinBottom,
+      })
 
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     await notify(auth.bakeryId, { type: 'products.updated' })

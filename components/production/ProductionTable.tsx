@@ -20,9 +20,16 @@ interface ProductionTableProps {
   displayMode?: 'by-article' | 'by-section'
 }
 
-export function ProductionTable({ title, sections, orders, onToggleCell, displayMode = 'by-article' }: ProductionTableProps) {
+export function ProductionTable({ title, sections, orders: rawOrders, onToggleCell, displayMode = 'by-article' }: ProductionTableProps) {
   const workMode = useAppStore(state => state.workMode)
   const allProductIds = sections.flatMap(s => s.products.map(p => p.id))
+
+  // In production an item counts as done if it was marked either from the order
+  // (done) or from this view only (productionDone).
+  const orders = rawOrders.map(order => ({
+    ...order,
+    items: order.items.map(item => (item.productionDone ? { ...item, done: true } : item)),
+  }))
 
   const relevantOrders = orders
     .filter(order => order.items.some(item => allProductIds.includes(item.productId)))

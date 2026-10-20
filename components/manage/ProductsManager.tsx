@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Search, Plus, Pencil, Trash2, GripVertical, FolderInput, FolderPlus } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, GripVertical, FolderInput, FolderPlus, ArrowDownToLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ProductEditDialog } from './ProductEditDialog'
 import { SectionDialog } from './SectionDialog'
@@ -26,7 +26,7 @@ import { toast } from 'sonner'
 
 export function ProductsManager() {
   const { products, remove: removeProduct, update: updateProduct } = useProducts()
-  const { sections, reorder, remove: removeSection } = useSections()
+  const { sections, reorder, remove: removeSection, setPinBottom } = useSections()
 
   const [search, setSearch] = useState('')
   const [editProduct, setEditProduct] = useState<Product | null>(null)
@@ -170,6 +170,29 @@ export function ProductsManager() {
                 <span className="text-xs text-slate-400 flex-1 sm:hidden text-right">
                   {sectionProducts.length}
                 </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    'h-7 w-7',
+                    section.pinBottom
+                      ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                      : 'text-slate-400 hover:text-slate-600'
+                  )}
+                  onClick={async () => {
+                    try {
+                      await setPinBottom(section.id, !section.pinBottom)
+                      toast.success(section.pinBottom ? 'Sezione non più fissata in basso' : 'Sezione fissata in basso negli ordini')
+                    } catch {
+                      toast.error("Errore durante l'aggiornamento")
+                    }
+                  }}
+                  title={section.pinBottom
+                    ? 'Fissata in basso negli ordini — clicca per togliere'
+                    : 'Fissa in basso negli ordini (sopra gli articoli già prodotti)'}
+                >
+                  <ArrowDownToLine className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
