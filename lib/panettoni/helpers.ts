@@ -86,3 +86,21 @@ export function shownFlavors(flavors: PanettoneFlavor[], orders: PanettoneOrder[
   const used = new Set(orders.filter((o) => o.status !== 'done').flatMap((o) => o.items.map((i) => i.flavorId)))
   return flavors.filter((f) => f.active || used.has(f.id))
 }
+
+/**
+ * Normalizes a typed pickup time: "10.45" / "1045" / "10 45" / "9:5" / "9"
+ * → "10:45" / "10:45" / "10:45" / "09:05" / "09:00". Text that isn't a valid
+ * time (e.g. "in mattinata") is kept as typed, trimmed to 40 chars.
+ */
+export function normalizeTime(raw: string): string {
+  const text = raw.trim()
+  const parts =
+    /^(\d{1,2})(?:\s*[:.,h ]\s*(\d{1,2}))?$/i.exec(text) ?? // 9 · 9:5 · 10.45 · 10h45
+    /^(\d{1,2})(\d{2})$/.exec(text) // 945 · 1045
+  if (parts) {
+    const hh = Number(parts[1])
+    const mm = parts[2] === undefined ? 0 : Number(parts[2])
+    if (hh <= 23 && mm <= 59) return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+  }
+  return text.slice(0, 40)
+}

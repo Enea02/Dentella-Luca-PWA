@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { usePanettoneFlavors, usePanettoneOrders } from '@/hooks/usePanettoni'
 import type { DeliveryKind } from '@/lib/panettoni/types'
 import { cn } from '@/lib/utils'
+import { DatePickerField, TimePickerField } from './pickers'
 import { alpha } from './status'
 
 interface Props {
@@ -142,14 +143,18 @@ export function NewOrderDialog({ open, onOpenChange, season }: Props) {
               ))}
             </div>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-              <label className="flex flex-col gap-1">
-                <span className={labelClass}>{form.kind === 'preciso' ? 'Consegna il' : 'Entro il'}</span>
-                <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} className={inputClass} />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className={labelClass}>Ora ritiro</span>
-                <input type="time" value={form.time} onChange={(e) => set('time', e.target.value)} className={inputClass} />
-              </label>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="panettoni-delivery-date" className={labelClass}>
+                  {form.kind === 'preciso' ? 'Consegna il' : 'Entro il'}
+                </label>
+                <DatePickerField id="panettoni-delivery-date" value={form.date} onChange={(v) => set('date', v)} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="panettoni-pickup-time" className={labelClass}>
+                  Ora ritiro
+                </label>
+                <TimePickerField id="panettoni-pickup-time" value={form.time} onChange={(v) => set('time', v)} />
+              </div>
               <label className="flex flex-col gap-1">
                 <span className={labelClass}>Acconto €</span>
                 <input
