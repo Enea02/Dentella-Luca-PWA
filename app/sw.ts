@@ -43,6 +43,15 @@ const serwist = new Serwist({
         plugins: [new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 5 * 60 })], // 5min
       }),
     },
+    // Panettoni (seasonal) — NetworkFirst, cache as offline fallback
+    {
+      matcher: /\/api\/panettoni\/(orders|flavors|plan-settings)(\?|$)/,
+      handler: new NetworkFirst({
+        cacheName: 'api-panettoni',
+        networkTimeoutSeconds: 3,
+        plugins: [new ExpirationPlugin({ maxEntries: 10, maxAgeSeconds: 24 * 60 * 60 })], // 24h
+      }),
+    },
     // Orders range (statistics) — StaleWhileRevalidate
     {
       matcher: /\/api\/orders\/range/,
@@ -91,6 +100,25 @@ serwist.registerCapture(
         status: 202,
         headers: { 'Content-Type': 'application/json' },
       })
+    }
+  },
+  'POST',
+)
+
+// Panettoni: row status changes, per-flavor deliveries and production "fatto"
+// marks. All send the TARGET state, so replaying them later is idempotent.
+const panettoniQueue = new BackgroundSyncQueue('panettoni-sync', {
+  maxRetentionTime: 24 * 60, // 24 hours
+})
+
+serwist.registerCapture(
+  /\/api\/panettoni\/(orders\/[^/]+\/(status|deliver)|production)(\?.*)?$/,
+  async ({ request }) => {
+    try {
+      return await fetch(request.clone())
+    } catch {
+      await panettoniQueue.pushRequest({ request })
+      return new Response(null, { status: 202 })
     }
   },
   'POST',

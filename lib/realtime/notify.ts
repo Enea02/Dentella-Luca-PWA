@@ -9,6 +9,7 @@ export type RealtimeEventType =
   | 'users.updated'
   | 'permissions.updated'
   | 'divisors.updated'
+  | 'panettoni.updated'
 
 export interface RealtimeEvent {
   type: RealtimeEventType

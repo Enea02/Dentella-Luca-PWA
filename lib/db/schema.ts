@@ -302,6 +302,104 @@ export const userPermissionOverrides = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.permission] })],
 )
 
+// ---------- Panettoni (seasonal Christmas orders) ----------
+// A self-contained domain: these orders are NOT tied to `customers`/`products`
+// (walk-in customers, flavors instead of products) and never feed the daily views.
+export const panettoneStatusEnum = pgEnum('panettone_status', ['todo', 'stock', 'done'])
+export const panettoneDeliveryKindEnum = pgEnum('panettone_delivery_kind', ['preciso', 'entro'])
+
+export const panettoneFlavors = pgTable(
+  'panettone_flavors',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    bakeryId: uuid('bakery_id')
+      .notNull()
+      .references(() => bakeries.id, { onDelete: 'cascade' }),
+    // Stable slug (e.g. 'classico'), used to seed the defaults idempotently.
+    key: text('key').notNull(),
+    name: text('name').notNull(),
+    color: text('color').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    active: boolean('active').notNull().default(true),
+  },
+  (t) => [unique('panettone_flavors_bakery_key').on(t.bakeryId, t.key)],
+)
+
+export const panettoneOrders = pgTable(
+  'panettone_orders',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    bakeryId: uuid('bakery_id')
+      .notNull()
+      .references(() => bakeries.id, { onDelete: 'cascade' }),
+    season: smallint('season').notNull(),
+    customerName: text('customer_name').notNull(),
+    phone: text('phone'),
+    deliveryKind: panettoneDeliveryKindEnum('delivery_kind').notNull(),
+    // 'preciso' = the pickup day; 'entro' = the deadline.
+    deliveryDate: date('delivery_date').notNull(),
+    // Free text: may be an hour ("09:30") or a hint ("in mattinata").
+    pickupTime: text('pickup_time'),
+    deposit: numeric('deposit', { precision: 10, scale: 2 }),
+    notes: text('notes'),
+    status: panettoneStatusEnum('status').notNull().default('todo'),
+    doneAt: timestamp('done_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    // Bumped only on changes that affect the production plan (create, items,
+    // delivery date/kind) — NOT on status changes. Compared with the plan's
+    // confirmedAt to flag "piano da ricalcolare".
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('panettone_orders_season_idx').on(t.bakeryId, t.season)],
+)
+
+export const panettoneOrderItems = pgTable(
+  'panettone_order_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => panettoneOrders.id, { onDelete: 'cascade' }),
+    flavorId: uuid('flavor_id')
+      .notNull()
+      .references(() => panettoneFlavors.id, { onDelete: 'restrict' }),
+    qty: integer('qty').notNull(),
+    // Pieces already baked (marked from the Produzione tab). Always <= qty.
+    producedQty: integer('produced_qty').notNull().default(0),
+    // This flavor was handed to the customer (tap on the cell in the orders
+    // table). When every flavor of an order is delivered the order goes `done`.
+    delivered: boolean('delivered').notNull().default(false),
+  },
+  (t) => [
+    // One row per flavor per order; writes upsert on this key.
+    unique('panettone_order_items_order_flavor_key').on(t.orderId, t.flavorId),
+  ],
+)
+
+export const panettonePlanSettings = pgTable(
+  'panettone_plan_settings',
+  {
+    bakeryId: uuid('bakery_id')
+      .notNull()
+      .references(() => bakeries.id, { onDelete: 'cascade' }),
+    season: smallint('season').notNull(),
+    // First day of the planning horizon (inclusive). null = today, not before 14/12.
+    startDate: date('start_date'),
+    cap: integer('cap').notNull().default(20),
+    lead: integer('lead').notNull().default(1),
+    maxG: integer('max_g').notNull().default(4),
+    sunClosed: boolean('sun_closed').notNull().default(true),
+    strategy: text('strategy').$type<'tardi' | 'bilanciato' | 'presto'>().notNull().default('tardi'),
+    prio: text('prio').$type<'preciso' | 'entro' | 'nessuna'>().notNull().default('preciso'),
+    groupFlavors: boolean('group_flavors').notNull().default(true),
+    // Set by "Conferma piano"; any parameter change clears both.
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    // Snapshot of the confirmed plan, read by the Produzione tab.
+    confirmedPlan: jsonb('confirmed_plan'),
+  },
+  (t) => [primaryKey({ columns: [t.bakeryId, t.season] })],
+)
+
 // ---------- Relations ----------
 export const bakeriesRelations = relations(bakeries, ({ many }) => ({
   users: many(users),

@@ -14,6 +14,7 @@ interface RealtimeEvent {
     | 'users.updated'
     | 'permissions.updated'
     | 'divisors.updated'
+    | 'panettoni.updated'
   entityId?: string
   date?: string
 }
@@ -92,6 +93,10 @@ export function useRealtimeSync() {
           break
         case 'divisors.updated':
           mutate('divisors')
+          break
+        case 'panettoni.updated':
+          // Orders, flavors and plan settings of the Panettoni section.
+          mutate((key) => Array.isArray(key) && key[0] === 'panettoni')
           break
       }
     }

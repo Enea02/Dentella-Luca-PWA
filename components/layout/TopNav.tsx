@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 import { RoleBadge } from './RoleBadge'
 import { BakeryDialog } from './BakeryDialog'
 
-const navLinks = [
+const navLinks: { href: string; label: string; seasonal?: boolean }[] = [
   { href: '/orders', label: 'Ordini' },
   { href: '/totals', label: 'Totali' },
   { href: '/production', label: 'Produzione' },
@@ -48,6 +48,7 @@ export function TopNav() {
   const allLinks = [
     ...navLinks,
     ...(showSheet ? [{ href: '/sheet', label: 'Foglio' }] : []),
+    ...(can(user, 'orders:read') ? [{ href: '/panettoni', label: 'Panettoni', seasonal: true }] : []),
     ...(canManage ? [{ href: '/manage', label: 'Gestione' }] : []),
     ...(canStats ? [{ href: '/statistics', label: 'Statistiche' }] : []),
   ]
@@ -94,7 +95,9 @@ export function TopNav() {
                         'px-4 py-3 rounded-xl text-base font-medium transition-colors',
                         pathname === link.href
                           ? 'bg-slate-900 text-white'
-                          : 'text-slate-700 hover:bg-slate-100'
+                          : link.seasonal
+                            ? 'bg-amber-100 text-amber-700 border border-amber-200 font-semibold hover:bg-amber-200'
+                            : 'text-slate-700 hover:bg-slate-100'
                       )}
                     >
                       {link.label}
@@ -149,7 +152,9 @@ export function TopNav() {
                 'px-3 py-1.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors',
                 pathname === link.href
                   ? 'bg-slate-900 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  : link.seasonal
+                    ? 'bg-amber-100 text-amber-700 border border-amber-200 font-semibold hover:bg-amber-200'
+                    : 'text-slate-600 hover:bg-slate-100'
               )}
             >
               {link.label}

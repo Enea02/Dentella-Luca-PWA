@@ -1,5 +1,6 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import { TopNav } from './TopNav'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { useBusinessDay } from '@/hooks/useBusinessDay'
@@ -11,6 +12,10 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   useRealtimeSync()
   useBusinessDay()
+  const pathname = usePathname()
+  // The seasonal Panettoni section has its own full-width dark header
+  // (app/(app)/panettoni/layout.tsx) in place of the TopNav.
+  if (pathname?.startsWith('/panettoni')) return <>{children}</>
   return (
     <div className="min-h-dvh bg-slate-100">
       <TopNav />

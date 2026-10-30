@@ -15,6 +15,14 @@ import type {
   Weekday,
   Role,
 } from './types'
+import type {
+  NewPanettoneOrder,
+  PanettoneFlavor,
+  PanettoneOrder,
+  PanettoneStatus,
+  PlanParams,
+  PlanSettings,
+} from './panettoni/types'
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   const res = await fetch(`/api${endpoint}`, {
@@ -228,5 +236,49 @@ export const productionGroupsApi = {
     fetchApi<void>('/production-groups/reorder', {
       method: 'POST',
       body: JSON.stringify({ orderedIds }),
+    }).then(() => undefined),
+}
+
+// ---- Panettoni (seasonal) ----
+export const panettoniApi = {
+  flavors: () => fetchRequired<PanettoneFlavor[]>('/panettoni/flavors'),
+  orders: (season: number) => fetchRequired<PanettoneOrder[]>(`/panettoni/orders?season=${season}`),
+  createOrder: (order: NewPanettoneOrder) =>
+    fetchRequired<PanettoneOrder>('/panettoni/orders', { method: 'POST', body: JSON.stringify(order) }),
+  updateOrder: (id: string, fields: Partial<Omit<NewPanettoneOrder, 'items'>>) =>
+    fetchRequired<PanettoneOrder>(`/panettoni/orders/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(fields),
+    }),
+  deleteOrder: (id: string) =>
+    fetchApi<void>(`/panettoni/orders/${id}`, { method: 'DELETE' }).then(() => undefined),
+  setStatus: (id: string, status: PanettoneStatus) =>
+    fetchApi<void>(`/panettoni/orders/${id}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    }).then(() => undefined),
+  setDelivered: (id: string, flavorId: string, delivered: boolean) =>
+    fetchApi<void>(`/panettoni/orders/${id}/deliver`, {
+      method: 'POST',
+      body: JSON.stringify({ flavorId, delivered }),
+    }).then(() => undefined),
+  setItemQty: (id: string, flavorId: string, qty: number) =>
+    fetchApi<void>(`/panettoni/orders/${id}/items`, {
+      method: 'PUT',
+      body: JSON.stringify({ flavorId, qty }),
+    }).then(() => undefined),
+  planSettings: (season: number) =>
+    fetchRequired<PlanSettings>(`/panettoni/plan-settings?season=${season}`),
+  updatePlanSettings: (season: number, patch: Partial<PlanParams> & { startDate?: string | null }) =>
+    fetchRequired<PlanSettings>(`/panettoni/plan-settings?season=${season}`, {
+      method: 'PUT',
+      body: JSON.stringify(patch),
+    }),
+  confirmPlan: (season: number) =>
+    fetchRequired<PlanSettings>(`/panettoni/plan-settings/confirm?season=${season}`, { method: 'POST' }),
+  markProduced: (season: number, date: string, flavorId: string, done: boolean) =>
+    fetchApi<void>(`/panettoni/production?season=${season}`, {
+      method: 'POST',
+      body: JSON.stringify({ date, flavorId, done }),
     }).then(() => undefined),
 }

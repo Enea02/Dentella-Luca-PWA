@@ -1,0 +1,1 @@
+ALTER TABLE "panettone_order_items" ADD COLUMN "delivered" boolean DEFAULT false NOT NULL;
