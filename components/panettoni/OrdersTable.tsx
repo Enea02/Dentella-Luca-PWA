@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 import { usePanettoneFlavors, usePanettoneOrders } from '@/hooks/usePanettoni'
 import { can } from '@/lib/auth/permissions'
-import { NEXT_STATUS, orderTotal, pendingQty, shortDate, withDelivery } from '@/lib/panettoni/helpers'
+import { NEXT_STATUS, orderTotal, pendingQty, shortDate, shownFlavors, withDelivery } from '@/lib/panettoni/helpers'
 import { currentSeason } from '@/lib/panettoni/types'
 import { cn } from '@/lib/utils'
 import { STATUS_STYLE, alpha } from './status'
@@ -59,7 +59,7 @@ export function OrdersTable() {
     [],
   )
 
-  const visibleFlavors = flavors.filter((f) => f.active)
+  const visibleFlavors = shownFlavors(flavors, orders)
   const active = orders.filter((o) => o.status !== 'done')
   const failed = () => toast.error('Errore durante il salvataggio')
 
@@ -241,7 +241,7 @@ export function OrdersTable() {
                 {visibleFlavors.map((f, i) => (
                     <th
                       key={f.id}
-                      title={f.name}
+                      title={f.active ? f.name : `${f.name} (nascosto: non si può più ordinare)`}
                       className={cn(
                         'sticky top-[34px] z-30 h-28 min-w-11 p-0 align-bottom border-b border-slate-300',
                         i === visibleFlavors.length - 1 ? 'border-r-2 border-r-slate-400' : 'border-r border-r-slate-200',
@@ -249,7 +249,12 @@ export function OrdersTable() {
                       style={{ backgroundColor: alpha(f.color, 0.08), color: f.color }}
                     >
                       <div className="flex h-28 items-end justify-center pb-2.5">
-                        <span className="[writing-mode:vertical-rl] rotate-180 text-[11px] font-semibold leading-none whitespace-nowrap">
+                        <span
+                        className={cn(
+                          '[writing-mode:vertical-rl] rotate-180 text-[11px] font-semibold leading-none whitespace-nowrap',
+                          !f.active && 'italic opacity-60',
+                        )}
+                      >
                           {f.name}
                         </span>
                       </div>

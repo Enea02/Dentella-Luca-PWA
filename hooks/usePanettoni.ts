@@ -17,11 +17,53 @@ import type {
 // (see lib/swr-provider.tsx), so a reload always shows server state.
 
 export function usePanettoneFlavors() {
-  const { data, error, isLoading } = useSWR<PanettoneFlavor[]>(
+  const { data, error, isLoading, mutate } = useSWR<PanettoneFlavor[]>(
     ['panettoni', 'flavors'],
     () => panettoniApi.flavors(),
   )
-  return { flavors: data ?? [], error, isLoading }
+
+  // Optimistic local change, rolled back if the request fails, then revalidated.
+  const optimistic = (next: (list: PanettoneFlavor[]) => PanettoneFlavor[], request: () => Promise<unknown>) =>
+    mutate(
+      async (current) => {
+        await request()
+        return current
+      },
+      { optimisticData: (current) => next(current ?? []), rollbackOnError: true, populateCache: false, revalidate: true },
+    )
+
+  return {
+    flavors: data ?? [],
+    error,
+    isLoading,
+    createFlavor: async (name: string, color: string) => {
+      const created = await panettoniApi.createFlavor(name, color)
+      await mutate((current) => [...(current ?? []), created], { revalidate: true })
+      return created
+    },
+    updateFlavor: (id: string, patch: Partial<Pick<PanettoneFlavor, 'name' | 'color' | 'active'>>) =>
+      optimistic(
+        (list) => list.map((f) => (f.id === id ? { ...f, ...patch } : f)),
+        () => panettoniApi.updateFlavor(id, patch),
+      ),
+    // Resolves to 'hidden' when the flavor is used by some order (kept, just not offered).
+    deleteFlavor: async (id: string) => {
+      const { result } = await panettoniApi.deleteFlavor(id)
+      await mutate()
+      return result
+    },
+    reorderFlavors: (orderedIds: string[]) =>
+      optimistic(
+        (list) =>
+          orderedIds
+            .map((id, i) => {
+              const f = list.find((x) => x.id === id)
+              return f && { ...f, sortOrder: i }
+            })
+            .filter((f): f is PanettoneFlavor => !!f),
+        () => panettoniApi.reorderFlavors(orderedIds),
+      ),
+  }
 }
 
 export function usePanettoneOrders(season: number) {

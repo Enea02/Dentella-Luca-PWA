@@ -5,13 +5,14 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
-import { Calendar, ChevronLeft, Plus, User } from 'lucide-react'
+import { Calendar, ChevronLeft, Palette, Plus, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePanettoneOrders } from '@/hooks/usePanettoni'
 import { can } from '@/lib/auth/permissions'
 import { currentSeason } from '@/lib/panettoni/types'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/lib/types'
+import { FlavorsDialog } from './FlavorsDialog'
 import { NewOrderDialog } from './NewOrderDialog'
 
 const TABS = [
@@ -31,6 +32,7 @@ export function PanettoniShell({ children }: { children: React.ReactNode }) {
   const season = currentSeason()
   const { orders } = usePanettoneOrders(season)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [flavorsOpen, setFlavorsOpen] = useState(false)
 
   const archived = orders.filter((o) => o.status === 'done').length
 
@@ -71,6 +73,18 @@ export function PanettoniShell({ children }: { children: React.ReactNode }) {
             {can(user, 'orders:edit') && (
               <button
                 type="button"
+                onClick={() => setFlavorsOpen(true)}
+                aria-label="Gestisci gusti"
+                title="Gestisci gusti"
+                className="inline-flex items-center gap-2 h-10 px-3 rounded-xl bg-white/8 hover:bg-white/18 text-sm font-semibold text-slate-100 transition-colors"
+              >
+                <Palette className="h-[18px] w-[18px]" />
+                <span className="hidden md:inline">Gusti</span>
+              </button>
+            )}
+            {can(user, 'orders:edit') && (
+              <button
+                type="button"
                 onClick={() => setDialogOpen(true)}
                 className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 text-sm font-bold transition-colors"
               >
@@ -103,7 +117,10 @@ export function PanettoniShell({ children }: { children: React.ReactNode }) {
       <main className="max-w-7xl mx-auto px-4 pt-4 pb-24">{children}</main>
 
       {can(user, 'orders:edit') && (
-        <NewOrderDialog open={dialogOpen} onOpenChange={setDialogOpen} season={season} />
+        <>
+          <NewOrderDialog open={dialogOpen} onOpenChange={setDialogOpen} season={season} />
+          <FlavorsDialog open={flavorsOpen} onOpenChange={setFlavorsOpen} />
+        </>
       )}
     </div>
   )

@@ -17,7 +17,7 @@ import {
   type PlanSettings,
 } from './types'
 
-const flavorColumns = {
+export const flavorColumns = {
   id: panettoneFlavors.id,
   key: panettoneFlavors.key,
   name: panettoneFlavors.name,

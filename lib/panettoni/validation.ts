@@ -25,6 +25,29 @@ export const OrderFieldsSchema = z.object({
   notes: optionalText(1000),
 })
 
+export const FlavorNameSchema = z.string().trim().min(1).max(40)
+export const FlavorColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Colore non valido')
+
+/** Case- and accent-insensitive comparison key for flavor names ("Caffè" = "caffe"). */
+export const flavorNameKey = (name: string) =>
+  name
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+/** True when another flavor of the bakery already has this name. */
+export async function flavorNameTaken(bakeryId: string, name: string, exceptId?: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: panettoneFlavors.id, name: panettoneFlavors.name })
+    .from(panettoneFlavors)
+    .where(eq(panettoneFlavors.bakeryId, bakeryId))
+  const key = flavorNameKey(name)
+  return rows.some((r) => r.id !== exceptId && flavorNameKey(r.name) === key)
+}
+
 /** `?season=` query param, defaulting to the current campaign. */
 export function seasonParam(url: string): number {
   const raw = new URL(url).searchParams.get('season')

@@ -1,6 +1,6 @@
 // Small shared helpers for the Panettoni section (client + server safe).
 import { seasonEnd, weekday } from './plan'
-import type { PanettoneOrder, PanettoneStatus, PlanSettings } from './types'
+import type { PanettoneFlavor, PanettoneOrder, PanettoneStatus, PlanSettings } from './types'
 
 /** Today in the bakery's timezone (the server runs in UTC). */
 export function todayRome(now: Date = new Date()): string {
@@ -77,3 +77,12 @@ export function withRowStatus(o: PanettoneOrder, status: PanettoneStatus): Panet
 /** Pieces still to hand over (flavors not yet delivered). */
 export const pendingQty = (o: Pick<PanettoneOrder, 'items'>) =>
   o.items.reduce((a, i) => a + (i.delivered ? 0 : i.qty), 0)
+
+/**
+ * Flavor columns to show: active flavors plus hidden ones still present in an
+ * open order (hiding a flavor must never make ordered pieces disappear).
+ */
+export function shownFlavors(flavors: PanettoneFlavor[], orders: PanettoneOrder[]): PanettoneFlavor[] {
+  const used = new Set(orders.filter((o) => o.status !== 'done').flatMap((o) => o.items.map((i) => i.flavorId)))
+  return flavors.filter((f) => f.active || used.has(f.id))
+}

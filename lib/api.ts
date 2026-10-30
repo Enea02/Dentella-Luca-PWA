@@ -242,6 +242,18 @@ export const productionGroupsApi = {
 // ---- Panettoni (seasonal) ----
 export const panettoniApi = {
   flavors: () => fetchRequired<PanettoneFlavor[]>('/panettoni/flavors'),
+  createFlavor: (name: string, color: string) =>
+    fetchRequired<PanettoneFlavor>('/panettoni/flavors', { method: 'POST', body: JSON.stringify({ name, color }) }),
+  updateFlavor: (id: string, patch: Partial<Pick<PanettoneFlavor, 'name' | 'color' | 'active'>>) =>
+    fetchRequired<PanettoneFlavor>(`/panettoni/flavors/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  // 'hidden' when the flavor is used by some order and can't be deleted.
+  deleteFlavor: (id: string) =>
+    fetchRequired<{ result: 'deleted' | 'hidden' }>(`/panettoni/flavors/${id}`, { method: 'DELETE' }),
+  reorderFlavors: (orderedIds: string[]) =>
+    fetchApi<void>('/panettoni/flavors/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ orderedIds }),
+    }).then(() => undefined),
   orders: (season: number) => fetchRequired<PanettoneOrder[]>(`/panettoni/orders?season=${season}`),
   createOrder: (order: NewPanettoneOrder) =>
     fetchRequired<PanettoneOrder>('/panettoni/orders', { method: 'POST', body: JSON.stringify(order) }),
