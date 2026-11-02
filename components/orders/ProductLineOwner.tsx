@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Trash2, Check } from 'lucide-react'
+import { useLongPress } from '@/hooks/useLongPress'
+import { PostponedBadge } from './PostponedBadge'
 
 interface ProductLineOwnerProps {
   item: OrderItem
@@ -16,9 +18,10 @@ interface ProductLineOwnerProps {
   onUpdate?: (quantity: number, unit: 'pieces' | 'kg') => void
   onUpdateVariant?: (variant: string) => void
   onRemove?: () => void
+  onLongPress?: () => void // → "Posticipa"
 }
 
-export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVariant, onRemove }: ProductLineOwnerProps) {
+export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVariant, onRemove, onLongPress }: ProductLineOwnerProps) {
   const [quantity, setQuantity] = useState(item.quantity.toString())
   const [variant, setVariant] = useState(item.variant ?? '')
 
@@ -29,6 +32,7 @@ export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVa
   useEffect(() => { setVariant(item.variant ?? '') }, [item.variant])
 
   const isPizza = product?.section === PIZZA_VARIANT_SECTION
+  const longPress = useLongPress(onLongPress)
 
   const handleQuantityBlur = () => {
     const num = parseFloat(quantity)
@@ -49,8 +53,8 @@ export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVa
   }
 
   return (
-    <div className={cn(
-      'px-3 md:px-4 py-3 rounded-xl transition-all',
+    <div {...longPress} className={cn(
+      'px-3 md:px-4 py-3 rounded-xl transition-all select-none [-webkit-touch-callout:none]',
       'flex flex-col gap-2',
       item.done
         ? 'bg-emerald-50 ring-1 ring-emerald-200'
@@ -84,6 +88,7 @@ export function ProductLineOwner({ item, product, onToggle, onUpdate, onUpdateVa
           )}>
             {product?.section}
           </p>
+          <PostponedBadge from={item.postponedFrom} />
         </div>
 
         {/* Quantity input */}

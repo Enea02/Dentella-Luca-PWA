@@ -289,6 +289,16 @@ export function usePanettoniForDate(date: string) {
         },
         () => panettoniApi.setItemState(orderId, flavorId, state),
       ),
+    // Moves ONE flavor to a later day: refresh every loaded day (the target too) and the season table.
+    postpone: (orderId: string, flavorId: string, toDate: string) =>
+      patch(
+        orderId,
+        (o) => {
+          const items = o.items.filter((i) => i.flavorId !== flavorId)
+          return items.length ? { ...o, items } : null
+        },
+        () => panettoniApi.postpone(orderId, flavorId, toDate),
+      ).finally(() => globalMutate(isDayKey)),
     // qty 0 removes the flavor; removing the last one deletes the whole panettoni order.
     setQty: (orderId: string, flavorId: string, qty: number) => {
       const order = data?.find((o) => o.orderId === orderId)

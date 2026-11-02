@@ -1,7 +1,8 @@
 // Server-only data access for the Panettoni section (imports the DB client).
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, ne } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import {
+  customers,
   panettoneFlavors,
   panettoneOrderItems,
   panettoneOrders,
@@ -12,6 +13,8 @@ import { statusFromItems } from './helpers'
 import type { PlanResult } from './plan'
 import {
   DEFAULT_PLAN_PARAMS,
+  seasonForDate,
+  type DeliveryKind,
   type PanettoneFlavor,
   type PanettoneOrder,
   type PanettoneStatus,
@@ -153,4 +156,51 @@ export async function syncStatusWithItems(tx: Tx, orderId: string): Promise<Pane
       .where(eq(panettoneOrders.id, orderId))
   }
   return status
+}
+
+/**
+ * The open (not archived) panettoni order of a LINKED customer for a delivery
+ * day, created if missing. Used by "+ Aggiungi panettone" and "Posticipa" in
+ * Ordini. A new order copies `template` (kind, phone, notes) when given.
+ * Bumps updatedAt (plan-relevant change). Returns its id.
+ */
+export async function findOrCreateOpenOrder(
+  tx: Tx,
+  bakeryId: string,
+  customerId: string,
+  date: string,
+  template?: { deliveryKind: DeliveryKind; phone: string | null; notes: string | null },
+): Promise<string> {
+  const [open] = await tx
+    .select({ id: panettoneOrders.id })
+    .from(panettoneOrders)
+    .where(
+      and(
+        eq(panettoneOrders.bakeryId, bakeryId),
+        eq(panettoneOrders.customerId, customerId),
+        eq(panettoneOrders.deliveryDate, date),
+        ne(panettoneOrders.status, 'done'),
+      ),
+    )
+    .orderBy(asc(panettoneOrders.createdAt))
+    .limit(1)
+  if (open) {
+    await tx.update(panettoneOrders).set({ updatedAt: new Date() }).where(eq(panettoneOrders.id, open.id))
+    return open.id
+  }
+  const [customer] = await tx.select({ name: customers.name }).from(customers).where(eq(customers.id, customerId))
+  const [created] = await tx
+    .insert(panettoneOrders)
+    .values({
+      bakeryId,
+      season: seasonForDate(date),
+      customerId,
+      customerName: customer.name,
+      deliveryKind: template?.deliveryKind ?? 'preciso',
+      deliveryDate: date,
+      phone: template?.phone ?? null,
+      notes: template?.notes ?? null,
+    })
+    .returning({ id: panettoneOrders.id })
+  return created.id
 }

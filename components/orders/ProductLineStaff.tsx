@@ -5,20 +5,24 @@ import type { OrderItem, Product } from '@/lib/types'
 import { Check } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useAuth } from '@/hooks/useAuth'
+import { useLongPress } from '@/hooks/useLongPress'
+import { PostponedBadge } from './PostponedBadge'
 
 interface ProductLineStaffProps {
   item: OrderItem
   product: Product | undefined
   onToggle: (done: boolean) => void
+  onLongPress?: () => void // → "Posticipa"
 }
 
-export function ProductLineStaff({ item, product, onToggle }: ProductLineStaffProps) {
+export function ProductLineStaff({ item, product, onToggle, onLongPress }: ProductLineStaffProps) {
   const unitLabel = item.unit === 'kg' ? 'kg' : 'pz'
   const workMode = useAppStore(state => state.workMode)
   const { role } = useAuth()
+  const longPress = useLongPress(onLongPress)
 
   const rowClasses = cn(
-    'w-full px-4 rounded-xl transition-all',
+    'w-full px-4 rounded-xl transition-all select-none [-webkit-touch-callout:none]',
     'flex items-center justify-between gap-3',
     workMode ? 'py-5' : 'py-3',
     item.done
@@ -60,6 +64,7 @@ export function ProductLineStaff({ item, product, onToggle }: ProductLineStaffPr
           {item.variant}
         </p>
       )}
+      <PostponedBadge from={item.postponedFrom} className={workMode ? 'text-xs' : undefined} />
     </div>
   )
 
@@ -76,7 +81,7 @@ export function ProductLineStaff({ item, product, onToggle }: ProductLineStaffPr
   // Staff: solo il cerchietto è cliccabile
   if (role === 'staff') {
     return (
-      <div className={rowClasses}>
+      <div className={rowClasses} {...longPress}>
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
@@ -101,6 +106,7 @@ export function ProductLineStaff({ item, product, onToggle }: ProductLineStaffPr
     <button
       onClick={() => onToggle(!item.done)}
       className={cn(rowClasses, 'text-left hover:shadow-sm active:scale-[0.99]')}
+      {...longPress}
     >
       <div className="flex items-center gap-3 min-w-0">
         {checkCircle}

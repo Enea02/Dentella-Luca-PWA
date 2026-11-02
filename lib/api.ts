@@ -104,6 +104,12 @@ export const ordersApi = {
       method: 'DELETE',
       body: JSON.stringify({ date, customerId, productId }),
     }).then(() => undefined),
+  // Long press → "Posticipa": the product moves to a later day of the same customer.
+  postponeItem: (date: string, customerId: string, productId: string, toDate: string) =>
+    fetchApi<void>('/orders/postpone', {
+      method: 'POST',
+      body: JSON.stringify({ date, customerId, productId, toDate }),
+    }).then(() => undefined),
 }
 
 export async function getCustomerRecurringOrder(customerId: string): Promise<RecurringOrder | null> {
@@ -283,6 +289,12 @@ export const panettoniApi = {
       method: 'POST',
       body: JSON.stringify({ flavorId, state }),
     }).then(() => undefined),
+  // Moves ONE flavor of a linked customer's order to a later day (Ordini → Posticipa).
+  postpone: (orderId: string, flavorId: string, toDate: string) =>
+    fetchRequired<{ orderId: string }>('/panettoni/postpone', {
+      method: 'POST',
+      body: JSON.stringify({ orderId, flavorId, toDate }),
+    }),
   setItemQty: (id: string, flavorId: string, qty: number) =>
     fetchApi<void>(`/panettoni/orders/${id}/items`, {
       method: 'PUT',

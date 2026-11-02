@@ -194,6 +194,9 @@ export const dailyOrderItems = pgTable(
     productionDone: boolean('production_done').notNull().default(false),
     variant: text('variant'),
     position: integer('position').notNull().default(0),
+    // Set when the item was postponed here from another day (long press →
+    // "Posticipa"): the original date, shown as "rimandato dal …".
+    postponedFrom: date('postponed_from'),
   },
   (t) => [
     index('daily_items_order_idx').on(t.dailyOrderId),

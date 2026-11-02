@@ -154,6 +154,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
         productionDone: dailyOrderItems.productionDone,
         variant: dailyOrderItems.variant,
         position: dailyOrderItems.position,
+        postponedFrom: dailyOrderItems.postponedFrom,
       })
       .from(dailyOrderItems)
       .where(
@@ -174,6 +175,7 @@ export const GET = withAuth(async (req: NextRequest, { auth }) => {
         done: it.done,
         ...(it.productionDone ? { productionDone: true } : {}),
         ...(it.variant != null ? { variant: it.variant } : {}),
+        ...(it.postponedFrom ? { postponedFrom: it.postponedFrom } : {}),
       })
       itemsByDaily.set(it.dailyOrderId, arr)
     }

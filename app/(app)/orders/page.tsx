@@ -12,7 +12,7 @@ import { DayOrder } from '@/components/orders/DayOrder'
 
 export default function OrdersPage() {
   const { selectedDate, selectedCustomerId, setSelectedCustomerId } = useAppStore()
-  const { orders, isLoading, toggleItem, addItem, updateItem, removeItem, clearOrder } = useOrders(selectedDate)
+  const { orders, isLoading, toggleItem, addItem, updateItem, removeItem, clearOrder, postponeItem } = useOrders(selectedDate)
   const { customers } = useCustomers()
   const panettoni = usePanettoniForDate(selectedDate)
 
@@ -55,6 +55,16 @@ export default function OrdersPage() {
 
   const handleSetPanettoneQty = (orderId: string, flavorId: string, qty: number) => {
     panettoni.setQty(orderId, flavorId, qty).catch(() => toast.error('Errore durante il salvataggio del panettone'))
+  }
+
+  const handlePostponeItem = async (productId: string, toDate: string) => {
+    if (selectedCustomerId) {
+      await postponeItem(selectedCustomerId, productId, toDate)
+    }
+  }
+
+  const handlePostponePanettone = async (orderId: string, flavorId: string, toDate: string) => {
+    await panettoni.postpone(orderId, flavorId, toDate)
   }
 
   const handleSetPanettoneState = (orderId: string, flavorId: string, state: PanettoneItemState) => {
@@ -122,6 +132,8 @@ export default function OrdersPage() {
           onAddPanettone={handleAddPanettone}
           onSetPanettoneQty={handleSetPanettoneQty}
           onSetPanettoneState={handleSetPanettoneState}
+          onPostponeItem={handlePostponeItem}
+          onPostponePanettone={handlePostponePanettone}
         />
       </div>
     </div>

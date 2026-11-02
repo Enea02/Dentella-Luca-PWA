@@ -18,6 +18,11 @@ import { getOrderStatus } from '@/lib/utils'
 import { STATUS_COLORS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { Trash2 } from 'lucide-react'
+import { format } from 'date-fns'
+import { it } from 'date-fns/locale'
+import { toast } from 'sonner'
+import { useAppStore } from '@/lib/store'
+import { PostponeDialog } from './PostponeDialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +47,9 @@ interface DayOrderProps {
   onAddPanettone?: (flavorId: string, qty: number) => Promise<void>
   onSetPanettoneQty?: (orderId: string, flavorId: string, qty: number) => void
   onSetPanettoneState?: (orderId: string, flavorId: string, state: PanettoneItemState) => void
+  // Long press → "Posticipa" (moves the product / that panettone flavor to a later day).
+  onPostponeItem?: (productId: string, toDate: string) => Promise<void>
+  onPostponePanettone?: (orderId: string, flavorId: string, toDate: string) => Promise<void>
 }
 
 export function DayOrder({
@@ -56,9 +64,18 @@ export function DayOrder({
   onAddPanettone,
   onSetPanettoneQty,
   onSetPanettoneState,
+  onPostponeItem,
+  onPostponePanettone,
 }: DayOrderProps) {
   const { user } = useAuth()
   const canEdit = can(user, 'orders:edit')
+  const canPostpone = can(user, 'orders:toggle') // everyone, decided with the bakery
+  const selectedDate = useAppStore((s) => s.selectedDate)
+  const [postponing, setPostponing] = useState<
+    | { kind: 'product'; productId: string; title: string; subtitle: string }
+    | { kind: 'panettone'; orderId: string; flavorId: string; title: string; subtitle: string }
+    | null
+  >(null)
   const { products } = useProducts()
   const { sections } = useSections()
   const [addingItem, setAddingItem] = useState(false)
@@ -78,6 +95,20 @@ export function DayOrder({
       setConfirmClear(false)
     } finally {
       setClearing(false)
+    }
+  }
+
+  async function handlePostpone(toDate: string) {
+    const target = postponing
+    setPostponing(null)
+    if (!target) return
+    const day = format(new Date(toDate + 'T00:00:00'), 'EEEE d MMMM', { locale: it })
+    try {
+      if (target.kind === 'product') await onPostponeItem?.(target.productId, toDate)
+      else await onPostponePanettone?.(target.orderId, target.flavorId, toDate)
+      toast.success(`${target.title} rimandato a ${day}`)
+    } catch (err) {
+      toast.error(err instanceof Error && err.message ? err.message : 'Errore: prodotto non rimandato')
     }
   }
 
@@ -165,6 +196,15 @@ export function DayOrder({
           <div className="p-3 space-y-2">
             {displayItems.map((item) => {
               const product = products.find(p => p.id === item.productId)
+              const unit = item.unit === 'kg' ? 'kg' : 'pz'
+              const onLongPress = canPostpone && onPostponeItem
+                ? () => setPostponing({
+                    kind: 'product',
+                    productId: item.productId,
+                    title: product?.name ?? 'prodotto',
+                    subtitle: `${order.customerName} · ${item.quantity} ${unit}`,
+                  })
+                : undefined
 
               if (canEdit) {
                 return (
@@ -186,6 +226,7 @@ export function DayOrder({
                     onRemove={
                       onRemoveItem ? () => onRemoveItem(item.productId) : undefined
                     }
+                    onLongPress={onLongPress}
                   />
                 )
               }
@@ -196,11 +237,27 @@ export function DayOrder({
                   item={item}
                   product={product}
                   onToggle={(done) => onToggleItem(item.productId, done)}
+                  onLongPress={onLongPress}
                 />
               )
             })}
             {onSetPanettoneQty && onSetPanettoneState && (
-              <PanettoniBlock orders={panettoni} onSetQty={onSetPanettoneQty} onSetState={onSetPanettoneState} />
+              <PanettoniBlock
+                orders={panettoni}
+                onSetQty={onSetPanettoneQty}
+                onSetState={onSetPanettoneState}
+                onPostpone={
+                  canPostpone && onPostponePanettone
+                    ? (o, item) => setPostponing({
+                        kind: 'panettone',
+                        orderId: o.orderId,
+                        flavorId: item.flavorId,
+                        title: `Panettone ${item.name}`,
+                        subtitle: `${order.customerName} · ${item.qty} pz`,
+                      })
+                    : undefined
+                }
+              />
             )}
           </div>
         </ScrollArea>
@@ -278,6 +335,15 @@ export function DayOrder({
           </div>
         )}
       </div>
+
+      <PostponeDialog
+        open={!!postponing}
+        title={postponing?.title ?? ''}
+        subtitle={postponing?.subtitle}
+        fromDate={selectedDate}
+        onPostpone={handlePostpone}
+        onClose={() => setPostponing(null)}
+      />
 
       <AlertDialog open={confirmClear} onOpenChange={(o) => !clearing && setConfirmClear(o)}>
         <AlertDialogContent>

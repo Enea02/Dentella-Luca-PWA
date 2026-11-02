@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { and, asc, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { customers, panettoneFlavors, panettoneOrderItems, panettoneOrders } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
-import { syncStatusWithItems } from '@/lib/panettoni/server'
-import { seasonForDate, type PanettoniForCustomer } from '@/lib/panettoni/types'
+import { findOrCreateOpenOrder, syncStatusWithItems } from '@/lib/panettoni/server'
+import type { PanettoniForCustomer } from '@/lib/panettoni/types'
 import { IsoDate, customerBelongsTo, flavorsBelongTo } from '@/lib/panettoni/validation'
 
 // Panettoni of customers LINKED to the gestionale, for one delivery day: shown
@@ -85,39 +85,7 @@ export const POST = withAuth(
     }
 
     const orderId = await db.transaction(async (tx) => {
-      const [open] = await tx
-        .select({ id: panettoneOrders.id })
-        .from(panettoneOrders)
-        .where(
-          and(
-            eq(panettoneOrders.bakeryId, auth.bakeryId),
-            eq(panettoneOrders.customerId, customerId),
-            eq(panettoneOrders.deliveryDate, date),
-            ne(panettoneOrders.status, 'done'),
-          ),
-        )
-        .orderBy(asc(panettoneOrders.createdAt))
-        .limit(1)
-
-      let id = open?.id
-      if (id) {
-        await tx.update(panettoneOrders).set({ updatedAt: new Date() }).where(eq(panettoneOrders.id, id))
-      } else {
-        const [customer] = await tx.select({ name: customers.name }).from(customers).where(eq(customers.id, customerId))
-        const [created] = await tx
-          .insert(panettoneOrders)
-          .values({
-            bakeryId: auth.bakeryId,
-            season: seasonForDate(date),
-            customerId,
-            customerName: customer.name,
-            deliveryKind: 'preciso',
-            deliveryDate: date,
-          })
-          .returning({ id: panettoneOrders.id })
-        id = created.id
-      }
-
+      const id = await findOrCreateOpenOrder(tx, auth.bakeryId, customerId, date)
       await tx
         .insert(panettoneOrderItems)
         .values({ orderId: id, flavorId, qty })

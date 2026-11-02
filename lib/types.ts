@@ -63,6 +63,7 @@ export interface OrderItem {
   // Marked from the Production view only (colors the production cell, not the order).
   productionDone?: boolean;
   variant?: string; // Free-text variant (used only for Pizze farcite items)
+  postponedFrom?: string; // YYYY-MM-DD: postponed here from that day ("rimandato dal …")
 }
 
 export interface RecurringBaseItem {

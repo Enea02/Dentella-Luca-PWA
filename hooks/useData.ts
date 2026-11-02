@@ -313,6 +313,25 @@ export function useOrders(date: string) {
       await mutate()
       await revalidateStats()
     },
+    // Moves a product to a later day: both days change, and statistics / the
+    // "Aggiunte" baseline derive from them.
+    postponeItem: async (customerId: string, productId: string, toDate: string) => {
+      mutate(
+        (current) =>
+          current?.map((order) =>
+            order.customerId === customerId
+              ? { ...order, items: order.items.filter((item) => item.productId !== productId) }
+              : order,
+          ),
+        false,
+      )
+      try {
+        await ordersApi.postponeItem(date, customerId, productId, toDate)
+      } finally {
+        await mutate()
+        await globalMutate(isOrdersOrStatsKey)
+      }
+    },
     clearOrder: async (customerId: string) => {
       // Optimistically empty the order; the CustomerList hides 0-item orders so the
       // customer disappears from the day. A single customer is removed server-side.

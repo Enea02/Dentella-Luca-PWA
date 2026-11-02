@@ -1,0 +1,1 @@
+ALTER TABLE "daily_order_items" ADD COLUMN "postponed_from" date;

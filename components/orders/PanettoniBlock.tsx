@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Check, Package, Trash2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useLongPress } from '@/hooks/useLongPress'
 import { can } from '@/lib/auth/permissions'
 import type { PanettoneItemState, PanettoniForCustomer } from '@/lib/panettoni/types'
 import { cn } from '@/lib/utils'
@@ -25,10 +26,12 @@ export function PanettoniBlock({
   orders,
   onSetQty,
   onSetState,
+  onPostpone,
 }: {
   orders: PanettoniForCustomer[]
   onSetQty: (orderId: string, flavorId: string, qty: number) => void
   onSetState: (orderId: string, flavorId: string, state: PanettoneItemState) => void
+  onPostpone?: (order: PanettoniForCustomer, item: PanettoniForCustomer['items'][number]) => void
 }) {
   const { user } = useAuth()
   const canEdit = can(user, 'orders:edit')
@@ -73,6 +76,7 @@ export function PanettoniBlock({
             item={item}
             canEdit={canEdit}
             onTap={canToggle ? () => setChoosing({ orderId: order.orderId, flavorId: item.flavorId }) : undefined}
+            onLongPress={onPostpone ? () => onPostpone(order, item) : undefined}
             onSetQty={(qty) => onSetQty(order.orderId, item.flavorId, qty)}
           />
         ))}
@@ -95,13 +99,16 @@ function PanettoneLine({
   item,
   canEdit,
   onTap,
+  onLongPress,
   onSetQty,
 }: {
   item: PanettoniForCustomer['items'][number]
   canEdit: boolean
   onTap?: () => void
+  onLongPress?: () => void
   onSetQty: (qty: number) => void
 }) {
+  const longPress = useLongPress(onLongPress)
   const [qty, setQty] = useState(String(item.qty))
   useEffect(() => setQty(String(item.qty)), [item.qty])
   const st = STATE_STYLE[item.state]
@@ -115,6 +122,7 @@ function PanettoneLine({
 
   return (
     <div
+      {...longPress}
       role={onTap ? 'button' : undefined}
       tabIndex={onTap ? 0 : undefined}
       onClick={onTap}
@@ -125,7 +133,7 @@ function PanettoneLine({
         onTap()
       }}
       className={cn(
-        'flex items-center gap-2 rounded-xl px-3 py-2.5 ring-1 md:gap-3',
+        'flex items-center gap-2 rounded-xl px-3 py-2.5 ring-1 md:gap-3 select-none [-webkit-touch-callout:none]',
         st.row,
         onTap && 'cursor-pointer transition-shadow hover:shadow-sm active:scale-[0.99]',
       )}
