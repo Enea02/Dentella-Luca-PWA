@@ -1,0 +1,1 @@
+ALTER TABLE "panettone_order_items" DROP COLUMN "delivered";

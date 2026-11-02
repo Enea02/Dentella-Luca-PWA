@@ -45,7 +45,7 @@ const serwist = new Serwist({
     },
     // Panettoni (seasonal) — NetworkFirst, cache as offline fallback
     {
-      matcher: /\/api\/panettoni\/(orders|flavors|plan-settings)(\?|$)/,
+      matcher: /\/api\/panettoni\/(orders|flavors|plan-settings|by-date)(\?|$)/,
       handler: new NetworkFirst({
         cacheName: 'api-panettoni',
         networkTimeoutSeconds: 3,
@@ -105,14 +105,14 @@ serwist.registerCapture(
   'POST',
 )
 
-// Panettoni: row status changes, per-flavor deliveries and production "fatto"
+// Panettoni: row status changes, per-flavor states and production "fatto"
 // marks. All send the TARGET state, so replaying them later is idempotent.
 const panettoniQueue = new BackgroundSyncQueue('panettoni-sync', {
   maxRetentionTime: 24 * 60, // 24 hours
 })
 
 serwist.registerCapture(
-  /\/api\/panettoni\/(orders\/[^/]+\/(status|deliver)|production)(\?.*)?$/,
+  /\/api\/panettoni\/(orders\/[^/]+\/(status|item-state)|production)(\?.*)?$/,
   async ({ request }) => {
     try {
       return await fetch(request.clone())

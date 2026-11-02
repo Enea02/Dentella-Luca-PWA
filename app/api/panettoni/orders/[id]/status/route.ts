@@ -5,11 +5,12 @@ import { db } from '@/lib/db/client'
 import { panettoneOrderItems, panettoneOrders } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
+import { ITEM_STATE_FOR_STATUS } from '@/lib/panettoni/helpers'
 
+// Whole row (tap on the customer, "Ripristina"): every flavor takes the matching
+// state — todo → da fare, stock → in magazzino, done → consegnato.
 // The client sends the TARGET status (not "advance"), so the request is
 // idempotent and safe to replay from the service worker's background-sync queue.
-// Per-flavor deliveries follow the row: `done` delivers every flavor, and an
-// order taken out of the archive ("Ripristina") starts undelivered again.
 const Schema = z.object({ status: z.enum(['todo', 'stock', 'done']) })
 
 export const POST = withAuth<{ id: string }>(
@@ -18,20 +19,16 @@ export const POST = withAuth<{ id: string }>(
     const { status } = await parseJson(req, Schema)
 
     const found = await db.transaction(async (tx) => {
-      const [prev] = await tx
-        .select({ status: panettoneOrders.status })
-        .from(panettoneOrders)
-        .where(and(eq(panettoneOrders.id, id), eq(panettoneOrders.bakeryId, auth.bakeryId)))
-      if (!prev) return false
-      await tx
+      const updated = await tx
         .update(panettoneOrders)
         .set({ status, doneAt: status === 'done' ? new Date() : null })
-        .where(eq(panettoneOrders.id, id))
-      if (status === 'done') {
-        await tx.update(panettoneOrderItems).set({ delivered: true }).where(eq(panettoneOrderItems.orderId, id))
-      } else if (prev.status === 'done') {
-        await tx.update(panettoneOrderItems).set({ delivered: false }).where(eq(panettoneOrderItems.orderId, id))
-      }
+        .where(and(eq(panettoneOrders.id, id), eq(panettoneOrders.bakeryId, auth.bakeryId)))
+        .returning({ id: panettoneOrders.id })
+      if (updated.length === 0) return false
+      await tx
+        .update(panettoneOrderItems)
+        .set({ state: ITEM_STATE_FOR_STATUS[status] })
+        .where(eq(panettoneOrderItems.orderId, id))
       return true
     })
     if (!found) return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -12,7 +12,7 @@ npm run dev:lan      # dev server bound to 0.0.0.0 (test from other LAN devices)
 npm run build        # production build — MUST stay `next build --webpack`
 npm run start        # production server (long-lived Node; required for realtime SSE)
 npm run lint         # eslint
-npm test             # unit tests (node:test via tsx) — currently lib/panettoni/plan.test.ts
+npm test             # unit tests (node:test via tsx): lib/**/*.test.ts
 
 # Database (Drizzle + Neon)
 npm run db:push      # apply schema directly (dev)
@@ -24,7 +24,7 @@ npm run bakery:create        # create a new bakery + first user (registration is
 npm run db:add-admin-role    # extend role enum with `admin` + promote a user (idempotent)
 ```
 
-The only automated tests cover the pure Panettoni planner (`npm test`). Everything else: verify by running the app (`npm run dev`) and exercising flows manually.
+The only automated tests cover pure Panettoni logic (`npm test`: planner, item/row state rule, time parsing). Everything else: verify by running the app (`npm run dev`) and exercising flows manually.
 
 ## Critical build/config constraints (non-obvious)
 
@@ -59,13 +59,14 @@ Every domain row is scoped by `bakery_id` (FK, cascade). A user belongs to exact
 - **Statistics range:** `GET /api/orders/range` assembles each date with the same recurring/daily merge as the single-date GET, clamped to `MAX_DAYS` (367 ≈ one year). Future dates project fixed customers from their recurring templates, so the statistics page (presets incl. *Ultimo anno* / *Prossimo anno*) can quantify past **and** projected annual production.
 
 ### Panettoni (seasonal section) — separate domain
-- `/panettoni/*` (tabs tabella/totali/produzione/pianificazione/archivio) has its own dark header: `AppShell` skips the TopNav for that path. Tables `panettone_*` are NOT linked to `customers`/`products` (walk-in customers, flavors instead of products), scoped by `bakery_id` + `season`.
+- `/panettoni/*` (tabs tabella/totali/produzione/pianificazione/archivio) has its own dark header: `AppShell` skips the TopNav for that path. Tables `panettone_*` use flavors (not `products`), scoped by `bakery_id` + `season` (`seasonForDate`: January belongs to the previous Christmas).
+- **Link to the gestionale (optional):** `panettone_orders.customer_id` → `customers` (`ON DELETE SET NULL`); walk-ins stay name-only. Panettoni stay the single source of truth: Ordini shows a linked customer's panettoni for the day via `GET /api/panettoni/by-date?date=` (`usePanettoniForDate`), NOT via `GET /api/orders` — so Totali/Produzione/Foglio/Statistiche never count them. "Entro il" orders show on their deadline. The Ordini page merges customers that have only panettoni into its list (page-level, not in `useOrders`). "+ Aggiungi panettone" (`POST /api/panettoni/by-date`) adds to that customer's open order for the day or creates it. Tapping a panettone line in Ordini opens the same In magazzino / Consegnato chooser as the table (`itemChoices` in components/panettoni/StateChooser.tsx, shared) and writes the same cell (`POST /orders/[id]/item-state`, `orders:toggle`). The two views refresh each other locally (`isDayKey` / `isSeasonKey` in hooks/usePanettoni.ts).
 - Permissions reuse `orders:read` / `orders:toggle` (row status, production "fatto", Ripristina) / `orders:edit` (create, cell quantities, planner settings, Conferma piano).
 - Planner: `buildPlan` in `lib/panettoni/plan.ts` (pure; parity-tested against the design prototype). Plans only `todo` orders, minus `produced_qty`. "Conferma piano" recomputes server-side and stores the snapshot in `panettone_plan_settings.confirmed_plan`; Produzione works from that snapshot. `panettone_orders.updated_at` is bumped only by plan-relevant changes (not status) and drives the "piano da ricalcolare" warning.
-- Orders table gestures: tap a number = that flavor delivered (`panettone_order_items.delivered`, `POST /orders/[id]/deliver`); double tap / long press = edit quantity; tap the customer = row status todo → stock → done. When every flavor is delivered the order goes `done` (archive) — the rule lives in `syncStatusWithDeliveries` (server) and `withDelivery` (client, optimistic); keep them in step. Row `done` delivers all flavors; "Ripristina" resets them.
+- Orders table gestures: tap a number = a chooser (`StateChooser`) asks In magazzino / Consegnato / Annulla for that flavor (`panettone_order_items.state`, `POST /orders/[id]/item-state`); tap the customer = same chooser for the whole row (every cell takes the matching state); double tap / long press on a number = edit quantity. Archiving shows a toast whose Annulla restores the previous cell states. The order status is DERIVED from its cells by `statusFromItems` (lib/panettoni/helpers.ts), used both by the server (`syncStatusWithItems`) and the optimistic UI: all delivered → `done` (archive), all at least in stock → `stock`, else `todo`. Produzione "fatto" puts fully produced cells in stock.
 - Flavors are managed from the "Gusti" button in the section header (`orders:edit`): add / rename / recolor / reorder (= table column order) / hide. Deleting a flavor used by any order only HIDES it (`active=false`); hidden flavors stay visible in the table and totals while an open order still contains them (`shownFlavors`), but aren't offered for new orders.
 - Status, delivery and production writes send the TARGET state (idempotent) and are queued by the SW background sync when offline.
-- SQL to apply manually (idempotent, each also registers its Drizzle migration): `docs/sql/panettoni.sql` (0006), then `docs/sql/panettoni-0007-consegna-per-gusto.sql` (0007).
+- SQL to apply manually, in this order (idempotent, each also registers its Drizzle migrations; never delete these files): `docs/sql/panettoni.sql` (0006) → `panettoni-0007-consegna-per-gusto.sql` (0007) → `panettoni-0008-magazzino-per-gusto.sql` (0007–0009) → `panettoni-0010-collegamento-clienti.sql` (0010).
 
 ### Data layer & caching (SWR) — read before touching order/list views
 - `lib/swr-provider.tsx` sets a **localStorage-backed SWR cache** but only persists *reference* keys (`products`, `customers`, `sections`, `production-groups`, `divisors`, `bakery`). Orders/statistics/users are never served from old localStorage.

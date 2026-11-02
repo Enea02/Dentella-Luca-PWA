@@ -8,6 +8,7 @@ import {
   panettonePlanSettings,
 } from '@/lib/db/schema'
 import { DEFAULT_FLAVORS } from './flavors'
+import { statusFromItems } from './helpers'
 import type { PlanResult } from './plan'
 import {
   DEFAULT_PLAN_PARAMS,
@@ -69,7 +70,7 @@ export async function loadOrders(
       flavorId: panettoneOrderItems.flavorId,
       qty: panettoneOrderItems.qty,
       producedQty: panettoneOrderItems.producedQty,
-      delivered: panettoneOrderItems.delivered,
+      state: panettoneOrderItems.state,
     })
     .from(panettoneOrderItems)
     .innerJoin(panettoneFlavors, eq(panettoneFlavors.id, panettoneOrderItems.flavorId))
@@ -86,6 +87,7 @@ export async function loadOrders(
   return rows.map((r) => ({
     id: r.id,
     season: r.season,
+    customerId: r.customerId,
     customerName: r.customerName,
     phone: r.phone,
     deliveryKind: r.deliveryKind,
@@ -129,29 +131,26 @@ export async function loadPlanSettings(bakeryId: string, season: number): Promis
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 /**
- * Keeps the order status in step with its per-flavor deliveries:
- * every flavor delivered → `done` (archive); a flavor taken back on a `done`
- * order → `stock`. Returns the resulting status. Call inside the transaction
- * that changed the items.
+ * The order status follows its items (single rule, mirrored on the client by
+ * statusFromItems): every flavor delivered → `done` (archive); every flavor at
+ * least in stock → `stock`; otherwise `todo`. Call inside the transaction that
+ * changed the items; returns the resulting status.
  */
-export async function syncStatusWithDeliveries(tx: Tx, orderId: string): Promise<PanettoneStatus> {
+export async function syncStatusWithItems(tx: Tx, orderId: string): Promise<PanettoneStatus> {
   const [order] = await tx
     .select({ status: panettoneOrders.status })
     .from(panettoneOrders)
     .where(eq(panettoneOrders.id, orderId))
   const items = await tx
-    .select({ delivered: panettoneOrderItems.delivered })
+    .select({ state: panettoneOrderItems.state })
     .from(panettoneOrderItems)
     .where(eq(panettoneOrderItems.orderId, orderId))
-  const allDelivered = items.length > 0 && items.every((i) => i.delivered)
-
-  if (allDelivered && order.status !== 'done') {
-    await tx.update(panettoneOrders).set({ status: 'done', doneAt: new Date() }).where(eq(panettoneOrders.id, orderId))
-    return 'done'
+  const status = statusFromItems(items, order.status)
+  if (status !== order.status) {
+    await tx
+      .update(panettoneOrders)
+      .set({ status, doneAt: status === 'done' ? new Date() : null })
+      .where(eq(panettoneOrders.id, orderId))
   }
-  if (!allDelivered && order.status === 'done') {
-    await tx.update(panettoneOrders).set({ status: 'stock', doneAt: null }).where(eq(panettoneOrders.id, orderId))
-    return 'stock'
-  }
-  return order.status
+  return status
 }

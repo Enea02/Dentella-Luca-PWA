@@ -68,17 +68,17 @@ export const weekday = (iso: string) => new Date(toUTC(iso)).getUTCDay() // 0 = 
 export const seasonEnd = (season: number) => `${season}-12-23`
 
 /**
- * Orders that still need baking: not delivered, not already in stock, with
- * the remaining (not yet produced) quantity per flavor. Flavors already handed
- * to the customer are skipped.
+ * What still needs baking: flavors still "da fare" (not in stock, not
+ * delivered) of orders not archived, with the remaining (not yet produced)
+ * quantity.
  */
 export function plannableOrders(orders: PanettoneOrder[]): PanettoneOrder[] {
   return orders
-    .filter((o) => o.status === 'todo')
+    .filter((o) => o.status !== 'done')
     .map((o) => ({
       ...o,
       items: o.items
-        .filter((i) => !i.delivered)
+        .filter((i) => i.state === 'todo')
         .map((i) => ({ ...i, qty: i.qty - i.producedQty, producedQty: 0 }))
         .filter((i) => i.qty > 0),
     }))

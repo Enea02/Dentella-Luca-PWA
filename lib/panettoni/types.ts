@@ -2,6 +2,8 @@
 import type { PlanResult } from './plan'
 
 export type PanettoneStatus = 'todo' | 'stock' | 'done'
+// One flavor of an order (one cell of the orders table).
+export type PanettoneItemState = 'todo' | 'stock' | 'delivered'
 export type DeliveryKind = 'preciso' | 'entro'
 
 export interface PanettoneFlavor {
@@ -17,12 +19,13 @@ export interface PanettoneOrderItem {
   flavorId: string
   qty: number
   producedQty: number
-  delivered: boolean // handed to the customer (per-cell tap in the orders table)
+  state: PanettoneItemState // da fare / in magazzino / consegnato (tap on the cell)
 }
 
 export interface PanettoneOrder {
   id: string
   season: number
+  customerId: string | null // linked customer of the gestionale (null = walk-in, name only)
   customerName: string
   phone: string | null
   deliveryKind: DeliveryKind
@@ -38,6 +41,7 @@ export interface PanettoneOrder {
 }
 
 export interface NewPanettoneOrder {
+  customerId?: string | null
   customerName: string
   phone?: string | null
   deliveryKind: DeliveryKind
@@ -83,4 +87,20 @@ export interface PlanSettings extends PlanParams {
 // Christmas (archive / end-of-season review).
 export function currentSeason(now: Date = new Date()): number {
   return now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
+}
+
+/** Campaign of a delivery date (same rule: a 6 January delivery belongs to the previous Christmas). */
+export function seasonForDate(iso: string): number {
+  const year = Number(iso.slice(0, 4))
+  return iso.slice(5, 7) === '01' ? year - 1 : year
+}
+
+/** A linked customer's panettoni for one day, shown inside Ordini (gestionale). */
+export interface PanettoniForCustomer {
+  orderId: string
+  customerId: string
+  customerName: string
+  deliveryKind: DeliveryKind
+  status: PanettoneStatus
+  items: { flavorId: string; name: string; color: string; qty: number; state: PanettoneItemState }[]
 }

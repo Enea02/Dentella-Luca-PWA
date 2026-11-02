@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { usePanettoneFlavors, usePanettoneOrders } from '@/hooks/usePanettoni'
 import type { DeliveryKind } from '@/lib/panettoni/types'
 import { cn } from '@/lib/utils'
+import { CustomerNameField } from './CustomerNameField'
 import { DatePickerField, TimePickerField } from './pickers'
 import { alpha } from './status'
 
@@ -18,6 +19,7 @@ interface Props {
 
 const emptyForm = (season: number) => ({
   name: '',
+  customerId: null as string | null, // linked customer of the gestionale
   phone: '',
   kind: 'preciso' as DeliveryKind,
   date: `${season}-12-24`,
@@ -63,6 +65,7 @@ export function NewOrderDialog({ open, onOpenChange, season }: Props) {
     try {
       const deposit = parseFloat(form.deposit.replace(',', '.'))
       await createOrder({
+        customerId: form.customerId,
         customerName: form.name.trim() || 'Nuovo cliente',
         phone: form.phone.trim() || null,
         deliveryKind: form.kind,
@@ -102,16 +105,15 @@ export function NewOrderDialog({ open, onOpenChange, season }: Props) {
 
         <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-            <label className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
               <span className={labelClass}>Nome cliente</span>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => set('name', e.target.value)}
-                placeholder="Es. Rossi Maria"
-                className={inputClass}
+              <CustomerNameField
+                name={form.name}
+                customerId={form.customerId}
+                onChange={(name, customerId) => setForm((f) => ({ ...f, name, customerId }))}
+                inputClass={inputClass}
               />
-            </label>
+            </div>
             <label className="flex flex-col gap-1">
               <span className={labelClass}>Telefono</span>
               <input

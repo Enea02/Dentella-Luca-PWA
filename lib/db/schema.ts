@@ -306,6 +306,8 @@ export const userPermissionOverrides = pgTable(
 // A self-contained domain: these orders are NOT tied to `customers`/`products`
 // (walk-in customers, flavors instead of products) and never feed the daily views.
 export const panettoneStatusEnum = pgEnum('panettone_status', ['todo', 'stock', 'done'])
+// Per flavor of an order (one cell of the orders table).
+export const panettoneItemStateEnum = pgEnum('panettone_item_state', ['todo', 'stock', 'delivered'])
 export const panettoneDeliveryKindEnum = pgEnum('panettone_delivery_kind', ['preciso', 'entro'])
 
 export const panettoneFlavors = pgTable(
@@ -333,6 +335,9 @@ export const panettoneOrders = pgTable(
       .notNull()
       .references(() => bakeries.id, { onDelete: 'cascade' }),
     season: smallint('season').notNull(),
+    // Optional link to a customer of the gestionale (e.g. Conad): the order then
+    // also shows in that customer's day in Ordini. Walk-in customers stay name-only.
+    customerId: uuid('customer_id').references(() => customers.id, { onDelete: 'set null' }),
     customerName: text('customer_name').notNull(),
     phone: text('phone'),
     deliveryKind: panettoneDeliveryKindEnum('delivery_kind').notNull(),
@@ -350,7 +355,11 @@ export const panettoneOrders = pgTable(
     // confirmedAt to flag "piano da ricalcolare".
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index('panettone_orders_season_idx').on(t.bakeryId, t.season)],
+  (t) => [
+    index('panettone_orders_season_idx').on(t.bakeryId, t.season),
+    // Ordini → a customer's day: linked orders by delivery date.
+    index('panettone_orders_customer_date_idx').on(t.bakeryId, t.customerId, t.deliveryDate),
+  ],
 )
 
 export const panettoneOrderItems = pgTable(
@@ -366,9 +375,10 @@ export const panettoneOrderItems = pgTable(
     qty: integer('qty').notNull(),
     // Pieces already baked (marked from the Produzione tab). Always <= qty.
     producedQty: integer('produced_qty').notNull().default(0),
-    // This flavor was handed to the customer (tap on the cell in the orders
-    // table). When every flavor of an order is delivered the order goes `done`.
-    delivered: boolean('delivered').notNull().default(false),
+    // One cell of the orders table: todo → stock (in magazzino) → delivered.
+    // The order status is derived from its items (see syncStatusWithItems):
+    // all delivered → `done` (archive); all at least in stock → `stock`.
+    state: panettoneItemStateEnum('state').notNull().default('todo'),
   },
   (t) => [
     // One row per flavor per order; writes upsert on this key.

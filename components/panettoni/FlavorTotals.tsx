@@ -17,7 +17,7 @@ export function FlavorTotals() {
         let customers = 0
         for (const o of active) {
           const item = o.items.find((i) => i.flavorId === f.id)
-          const q = item && !item.delivered ? item.qty : 0
+          const q = item && item.state !== 'delivered' ? item.qty : 0
           total += q
           if (q) customers++
         }

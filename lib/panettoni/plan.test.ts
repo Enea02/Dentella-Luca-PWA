@@ -17,6 +17,7 @@ function order(
   return {
     id: `o${seq}`,
     season: 2026,
+    customerId: null,
     customerName: `Cliente ${seq}`,
     phone: null,
     deliveryKind: kind,
@@ -28,7 +29,7 @@ function order(
     doneAt: null,
     createdAt: '',
     updatedAt: '',
-    items: Object.entries(items).map(([flavorId, qty]) => ({ flavorId, qty, producedQty: 0, delivered: false })),
+    items: Object.entries(items).map(([flavorId, qty]) => ({ flavorId, qty, producedQty: 0, state: 'todo' as const })),
     ...extra,
   }
 }
@@ -143,22 +144,24 @@ test('deliveries after the horizon are baked by its last day', () => {
   assert.equal(day(plan, '2026-12-23').total, 2)
 })
 
-test('plannableOrders: only todo orders, minus what is produced or already delivered', () => {
+test('plannableOrders: only flavors still to do, minus what is already produced', () => {
   const orders = [
-    order('2026-12-24', { a: 5 }, 'preciso', { status: 'stock' }),
     order('2026-12-24', { a: 5 }, 'preciso', { status: 'done' }),
     {
       ...order('2026-12-24', {}),
       items: [
-        { flavorId: 'a', qty: 5, producedQty: 2, delivered: false },
-        { flavorId: 'b', qty: 3, producedQty: 3, delivered: false },
-        { flavorId: 'c', qty: 4, producedQty: 0, delivered: true },
+        { flavorId: 'a', qty: 5, producedQty: 2, state: 'todo' as const },
+        { flavorId: 'b', qty: 3, producedQty: 3, state: 'todo' as const },
+        { flavorId: 'c', qty: 4, producedQty: 0, state: 'stock' as const },
+        { flavorId: 'd', qty: 2, producedQty: 0, state: 'delivered' as const },
       ],
     },
+    // A row "in magazzino" can't hold flavors to bake.
+    { ...order('2026-12-24', {}, 'preciso', { status: 'stock' }), items: [{ flavorId: 'a', qty: 2, producedQty: 0, state: 'stock' as const }] },
   ]
   const result = plannableOrders(orders)
   assert.equal(result.length, 1)
-  assert.deepEqual(result[0].items, [{ flavorId: 'a', qty: 3, producedQty: 0, delivered: false }])
+  assert.deepEqual(result[0].items, [{ flavorId: 'a', qty: 3, producedQty: 0, state: 'todo' }])
 })
 
 // ---- Parity with the design prototype ----

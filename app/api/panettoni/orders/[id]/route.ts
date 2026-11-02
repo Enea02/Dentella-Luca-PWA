@@ -5,7 +5,7 @@ import { panettoneOrders } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
 import { loadOrders } from '@/lib/panettoni/server'
-import { OrderFieldsSchema } from '@/lib/panettoni/validation'
+import { OrderFieldsSchema, customerBelongsTo } from '@/lib/panettoni/validation'
 
 const UpdateSchema = OrderFieldsSchema.partial()
 
@@ -13,6 +13,9 @@ export const PATCH = withAuth<{ id: string }>(
   async (req: NextRequest, { params, auth }) => {
     const { id } = await params
     const { deposit, ...fields } = await parseJson(req, UpdateSchema)
+    if (!(await customerBelongsTo(auth.bakeryId, fields.customerId))) {
+      return NextResponse.json({ error: 'Cliente non valido' }, { status: 400 })
+    }
     // Only delivery changes move the order in the plan (see updatedAt in schema).
     const affectsPlan = fields.deliveryKind !== undefined || fields.deliveryDate !== undefined
     const updated = await db

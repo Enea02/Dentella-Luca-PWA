@@ -6,11 +6,12 @@ import { panettoneOrderItems, panettoneOrders, panettonePlanSettings } from '@/l
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
 import type { PlanResult } from '@/lib/panettoni/plan'
+import { syncStatusWithItems } from '@/lib/panettoni/server'
 import { IsoDate, seasonParam } from '@/lib/panettoni/validation'
 
 // Marks one flavor of one day of the CONFIRMED plan as baked ("fatto"), or
 // un-marks it. Baked pieces are added to each destination order's producedQty;
-// an order whose every flavor is fully produced moves todo → stock.
+// a cell fully produced goes "in magazzino", and the row status follows.
 // Idempotent: re-sending the same state is a no-op.
 const Schema = z.object({
   date: IsoDate,
@@ -45,6 +46,7 @@ export const POST = withAuth(
 
       for (const ref of item.orders) {
         if (!ownedIds.has(ref.orderId)) continue
+        const cell = and(eq(panettoneOrderItems.orderId, ref.orderId), eq(panettoneOrderItems.flavorId, flavorId))
         await tx
           .update(panettoneOrderItems)
           .set({
@@ -52,25 +54,22 @@ export const POST = withAuth(
               ? sql`least(${panettoneOrderItems.qty}, ${panettoneOrderItems.producedQty} + ${ref.qty})`
               : sql`greatest(0, ${panettoneOrderItems.producedQty} - ${ref.qty})`,
           })
-          .where(and(eq(panettoneOrderItems.orderId, ref.orderId), eq(panettoneOrderItems.flavorId, flavorId)))
-      }
-
-      if (ownedIds.size > 0) {
-        const ids = [...ownedIds]
-        // Fully produced?  = no item left with producedQty < qty.
-        const pending = sql`exists (select 1 from ${panettoneOrderItems} where ${panettoneOrderItems.orderId} = ${panettoneOrders.id} and ${panettoneOrderItems.producedQty} < ${panettoneOrderItems.qty})`
+          .where(cell)
+        // That cell goes "in magazzino" once all its pieces are baked (and back
+        // to "da fare" on undo). Delivered cells are never touched.
         if (done) {
           await tx
-            .update(panettoneOrders)
-            .set({ status: 'stock' })
-            .where(and(inArray(panettoneOrders.id, ids), eq(panettoneOrders.status, 'todo'), sql`not ${pending}`))
+            .update(panettoneOrderItems)
+            .set({ state: 'stock' })
+            .where(and(cell, eq(panettoneOrderItems.state, 'todo'), sql`${panettoneOrderItems.producedQty} >= ${panettoneOrderItems.qty}`))
         } else {
           await tx
-            .update(panettoneOrders)
-            .set({ status: 'todo' })
-            .where(and(inArray(panettoneOrders.id, ids), eq(panettoneOrders.status, 'stock'), pending))
+            .update(panettoneOrderItems)
+            .set({ state: 'todo' })
+            .where(and(cell, eq(panettoneOrderItems.state, 'stock'), sql`${panettoneOrderItems.producedQty} < ${panettoneOrderItems.qty}`))
         }
       }
+      for (const orderId of ownedIds) await syncStatusWithItems(tx, orderId)
 
       item.done = done
       await tx

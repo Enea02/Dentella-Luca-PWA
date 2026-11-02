@@ -5,7 +5,7 @@ import { db } from '@/lib/db/client'
 import { panettoneOrderItems, panettoneOrders } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
-import { syncStatusWithDeliveries } from '@/lib/panettoni/server'
+import { syncStatusWithItems } from '@/lib/panettoni/server'
 import { flavorsBelongTo } from '@/lib/panettoni/validation'
 
 // Sets one cell of the orders table. qty 0 removes the flavor from the order.
@@ -44,8 +44,9 @@ export const PUT = withAuth<{ id: string }>(
             set: { qty, producedQty: sql`least(${panettoneOrderItems.producedQty}, ${qty})` },
           })
       }
-      // Removing the last undelivered flavor completes the order.
-      return syncStatusWithDeliveries(tx, id)
+      // A new flavor (todo) reopens the row; removing the last flavor still to
+      // deliver completes the order.
+      return syncStatusWithItems(tx, id)
     })
     if (!status) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 

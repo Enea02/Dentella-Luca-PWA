@@ -1,14 +1,21 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, Link2, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 import { usePanettoneFlavors, usePanettoneOrders } from '@/hooks/usePanettoni'
 import { can } from '@/lib/auth/permissions'
-import { NEXT_STATUS, orderTotal, pendingQty, shortDate, shownFlavors, withDelivery } from '@/lib/panettoni/helpers'
-import { currentSeason } from '@/lib/panettoni/types'
+import {
+  orderTotal,
+  pendingQty,
+  shortDate,
+  shownFlavors,
+  withItemState,
+} from '@/lib/panettoni/helpers'
+import { currentSeason, type PanettoneItemState, type PanettoneOrder } from '@/lib/panettoni/types'
 import { cn } from '@/lib/utils'
+import { ITEM_STATE_LABEL, StateChooser, itemChoices, type StateChoice } from './StateChooser'
 import { STATUS_STYLE, alpha } from './status'
 
 const TAP_DELAY = 300 // ms: a single tap on a number waits this long to rule out a double tap
@@ -16,6 +23,27 @@ const LONG_PRESS = 420 // ms
 const UNDO_TIMEOUT = 4500 // ms
 
 type CellKey = `${string}:${string}` // orderId:flavorId
+
+// One cell per flavor: same palette as the production view (green = consegnato).
+const CELL_STYLE: Record<PanettoneItemState, { bg: string; text: string; title: string }> = {
+  todo: { bg: '', text: '', title: 'Da fare · tocca per cambiare' },
+  stock: { bg: 'bg-amber-100', text: 'text-amber-800', title: 'In magazzino · tocca per cambiare' },
+  delivered: { bg: 'bg-emerald-100', text: 'text-emerald-700', title: 'Consegnato · tocca per cambiare' },
+}
+
+/** Options offered for one flavor, from its current state. */
+const cellChoices = (order: PanettoneOrder, flavorId: string, current: PanettoneItemState) =>
+  itemChoices(current, withItemState(order, flavorId, 'delivered').status === 'done')
+
+/** Options offered for the whole row (tap on the customer). */
+function rowChoices(order: PanettoneOrder): StateChoice[] {
+  const all = (state: PanettoneItemState) => order.items.length > 0 && order.items.every((i) => i.state === state)
+  const choices: StateChoice[] = []
+  if (!all('stock')) choices.push({ state: 'stock', label: 'Tutto in magazzino' })
+  choices.push({ state: 'delivered', label: 'Tutto consegnato', hint: "L'ordine va in archivio" })
+  if (!all('todo')) choices.push({ state: 'todo', label: 'Rimetti tutto da fare' })
+  return choices
+}
 
 export function OrdersTable() {
   const season = currentSeason()
@@ -28,7 +56,7 @@ export function OrdersTable() {
     isLoading: ordersLoading,
     error: ordersError,
     setStatus,
-    setDelivered,
+    setItemState,
     setItemQty,
   } = usePanettoneOrders(season)
   const isLoading = flavorsLoading || ordersLoading
@@ -37,6 +65,8 @@ export function OrdersTable() {
   const [editing, setEditing] = useState<CellKey | null>(null)
   const [editValue, setEditValue] = useState('')
   const [undo, setUndo] = useState<{ name: string; run: () => void } | null>(null)
+  // Tap on a number (flavorId) or on the customer (whole row, flavorId null): ask what happened.
+  const [choosing, setChoosing] = useState<{ orderId: string; flavorId: string | null } | null>(null)
 
   // Gesture bookkeeping (refs: must not re-render, and timers read the latest values).
   const ordersRef = useRef(orders)
@@ -78,27 +108,40 @@ export function OrdersTable() {
   // A closing tap on the editor's surroundings must not trigger anything else.
   const justClosedEditor = () => !!editingRef.current || Date.now() - editorClosedAt.current < TAP_DELAY
 
-  // ---- Row (tap on the customer / delivery / total): todo → stock → done ----
+  // ---- Row (tap on the customer / delivery / total): choose for the whole row ----
   const onRowClick = (id: string) => {
     if (!canToggle || justClosedEditor()) return
-    const order = ordersRef.current.find((o) => o.id === id)
-    if (!order) return
-    const next = NEXT_STATUS[order.status]
-    setStatus(id, next).catch(failed)
-    if (next === 'done') {
-      showArchived(order.customerName, () => setStatus(id, 'stock').catch(failed))
-    }
+    setChoosing({ orderId: id, flavorId: null })
   }
 
-  // ---- Cell (tap on a number): that flavor delivered / not delivered ----
-  const toggleDelivered = (orderId: string, flavorId: string) => {
-    const order = ordersRef.current.find((o) => o.id === orderId)
-    const item = order?.items.find((i) => i.flavorId === flavorId)
-    if (!order || !item) return
-    const delivered = !item.delivered
-    setDelivered(orderId, flavorId, delivered).catch(failed)
-    if (withDelivery(order, flavorId, delivered).status === 'done') {
-      showArchived(order.customerName, () => setDelivered(orderId, flavorId, false).catch(failed))
+  // ---- Cell (tap on a number): choose for that flavor ----
+  const askCell = (orderId: string, flavorId: string) => setChoosing({ orderId, flavorId })
+
+  const applyChoice = (state: PanettoneItemState) => {
+    const target = choosing
+    setChoosing(null)
+    const order = target && ordersRef.current.find((o) => o.id === target.orderId)
+    if (!target || !order) return
+
+    if (target.flavorId) {
+      const flavorId = target.flavorId
+      const prev = order.items.find((i) => i.flavorId === flavorId)?.state
+      if (!prev || prev === state) return
+      setItemState(order.id, flavorId, state).catch(failed)
+      if (withItemState(order, flavorId, state).status === 'done') {
+        showArchived(order.customerName, () => setItemState(order.id, flavorId, prev).catch(failed))
+      }
+      return
+    }
+
+    // Whole row. Undo restores each cell as it was (cells may have been mixed).
+    const status = state === 'delivered' ? 'done' : state
+    const before = order.items.map((i) => ({ flavorId: i.flavorId, state: i.state }))
+    setStatus(order.id, status).catch(failed)
+    if (status === 'done') {
+      showArchived(order.customerName, () =>
+        before.forEach((i) => setItemState(order.id, i.flavorId, i.state).catch(failed)),
+      )
     }
   }
 
@@ -126,8 +169,8 @@ export function OrdersTable() {
     const [orderId, flavorId] = key.split(':')
     clearTimeout(tapTimer.current)
     // Without edit rights there is no double tap to wait for.
-    if (canEdit) tapTimer.current = setTimeout(() => toggleDelivered(orderId, flavorId), TAP_DELAY)
-    else toggleDelivered(orderId, flavorId)
+    if (canEdit) tapTimer.current = setTimeout(() => askCell(orderId, flavorId), TAP_DELAY)
+    else askCell(orderId, flavorId)
   }
 
   const onCellPointerDown = (key: CellKey, qty: number | undefined) => {
@@ -157,7 +200,7 @@ export function OrdersTable() {
     setItemQty(orderId, flavorId, qty).catch(failed)
     // Removing the only flavor still to deliver completes the order.
     const rest = order.items.filter((i) => i.flavorId !== flavorId)
-    if (qty === 0 && rest.length > 0 && rest.every((i) => i.delivered)) {
+    if (qty === 0 && rest.length > 0 && rest.every((i) => i.state === 'delivered')) {
       showArchived(order.customerName, () => setItemQty(orderId, flavorId, current).catch(failed))
     }
   }
@@ -165,7 +208,7 @@ export function OrdersTable() {
   // Footer: pieces still to hand over (delivered cells excluded).
   const totals = new Map<string, number>()
   for (const o of active)
-    for (const i of o.items) if (!i.delivered) totals.set(i.flavorId, (totals.get(i.flavorId) ?? 0) + i.qty)
+    for (const i of o.items) if (i.state !== 'delivered') totals.set(i.flavorId, (totals.get(i.flavorId) ?? 0) + i.qty)
   const grandTotal = [...totals.values()].reduce((a, b) => a + b, 0)
 
   const colCount = 3 + visibleFlavors.length // for the full-width empty row
@@ -175,14 +218,14 @@ export function OrdersTable() {
       <div className="flex items-center justify-between gap-x-4 gap-y-1.5 flex-wrap">
         <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-slate-600">
           <Legend swatch="bg-white border-slate-300">Da fare</Legend>
-          <Legend swatch="bg-yellow-200 border-yellow-500">In magazzino</Legend>
-          <Legend swatch="bg-emerald-100 border-emerald-500">Gusto consegnato</Legend>
+          <Legend swatch="bg-amber-100 border-amber-500">In magazzino</Legend>
+          <Legend swatch="bg-emerald-100 border-emerald-500">Consegnato</Legend>
           <span className="text-slate-400">· tutto consegnato → archivio</span>
         </div>
         <span className="text-xs text-slate-400">
           {canEdit
-            ? 'Tocca un numero quando lo consegni · doppio tocco (o tieni premuto) per modificarlo · tocca il nome per “in magazzino”'
-            : 'Tocca un numero quando lo consegni · tocca il nome per “in magazzino” · le quantità le modifica solo il titolare'}
+            ? 'Tocca un numero per segnarlo in magazzino o consegnato · doppio tocco (o tieni premuto) per modificarlo · tocca il nome per tutta la riga'
+            : 'Tocca un numero per segnarlo in magazzino o consegnato · tocca il nome per tutta la riga · le quantità le modifica solo il titolare'}
         </span>
       </div>
 
@@ -246,7 +289,12 @@ export function OrdersTable() {
                         'sticky top-[34px] z-30 h-28 min-w-11 p-0 align-bottom border-b border-slate-300',
                         i === visibleFlavors.length - 1 ? 'border-r-2 border-r-slate-400' : 'border-r border-r-slate-200',
                       )}
-                      style={{ backgroundColor: alpha(f.color, 0.08), color: f.color }}
+                      // Opaque tint (tint over white): rows scrolling under the sticky header must not show through.
+                      style={{
+                        backgroundColor: '#ffffff',
+                        backgroundImage: `linear-gradient(${alpha(f.color, 0.08)}, ${alpha(f.color, 0.08)})`,
+                        color: f.color,
+                      }}
                     >
                       <div className="flex h-28 items-end justify-center pb-2.5">
                         <span
@@ -288,14 +336,22 @@ export function OrdersTable() {
                     key={o.id}
                     // Reached only from customer / delivery / total cells: numbers stop propagation.
                     onClick={() => onRowClick(o.id)}
-                    title={canToggle ? 'Tocca il nome per cambiare stato' : undefined}
+                    title={canToggle ? 'Tocca il nome per cambiare lo stato di tutta la riga' : undefined}
                     className={cn('select-none [-webkit-touch-callout:none]', canToggle && 'cursor-pointer')}
                   >
                     <td className={cn(cell, 'sticky left-0 z-20 px-3 border-r border-r-slate-300')}>
                       <div className="flex items-center gap-2.5 max-w-[124px] sm:max-w-[196px]">
                         <span className={cn('shrink-0 h-2.5 w-2.5 rounded-full ring-2 ring-white', st.dot)} />
                         <div className="min-w-0">
-                          <div className="font-semibold text-slate-900 leading-tight truncate">{o.customerName}</div>
+                          <div className="flex items-center gap-1 font-semibold text-slate-900 leading-tight">
+                            <span className="truncate">{o.customerName}</span>
+                            {o.customerId && (
+                              <Link2
+                                className="h-3.5 w-3.5 shrink-0 text-indigo-500"
+                                aria-label="Collegato al gestionale"
+                              />
+                            )}
+                          </div>
                           <div className="text-[11px] leading-tight text-slate-500 truncate">{o.phone ?? '—'}</div>
                         </div>
                       </div>
@@ -320,14 +376,14 @@ export function OrdersTable() {
                       const key: CellKey = `${o.id}:${f.id}`
                       const item = itemOf.get(f.id)
                       const v = item?.qty
-                      const delivered = !!item?.delivered
+                      const state = item?.state ?? 'todo'
                       return (
                         <td
                           key={f.id}
                           className={cn(
                             cell,
                             'p-0 text-center',
-                            delivered && 'bg-emerald-100',
+                            v && CELL_STYLE[state].bg,
                             i === visibleFlavors.length - 1 ? 'border-r-2 border-r-slate-400' : cn('border-r', st.line),
                           )}
                         >
@@ -355,16 +411,19 @@ export function OrdersTable() {
                               onPointerLeave={cancelPress}
                               onPointerCancel={cancelPress}
                               onContextMenu={(e) => canEdit && e.preventDefault()}
-                              title={v ? (delivered ? 'Consegnato · tocca per annullare' : 'Tocca quando lo consegni') : undefined}
+                              title={v ? CELL_STYLE[state].title : undefined}
                               className={cn(
                                 'relative flex items-center justify-center h-12 text-sm font-semibold tabular-nums',
                                 (v && canToggle) || canEdit ? 'cursor-pointer' : 'cursor-default',
-                                delivered && 'text-emerald-700',
+                                v && CELL_STYLE[state].text,
                               )}
-                              style={v && !delivered ? { color: f.color } : undefined}
+                              style={v && state === 'todo' ? { color: f.color } : undefined}
                             >
                               {v || ''}
-                              {delivered && (
+                              {v && state === 'stock' && (
+                                <Package className="absolute top-1 right-1 h-3 w-3 text-amber-600" strokeWidth={2.5} />
+                              )}
+                              {v && state === 'delivered' && (
                                 <Check className="absolute top-1 right-1 h-3 w-3 text-emerald-600" strokeWidth={3} />
                               )}
                             </div>
@@ -415,6 +474,27 @@ export function OrdersTable() {
           </table>
         </div>
       )}
+
+      {(() => {
+        const order = choosing && orders.find((o) => o.id === choosing.orderId)
+        if (!choosing || !order) return null
+        const item = choosing.flavorId ? order.items.find((i) => i.flavorId === choosing.flavorId) : undefined
+        const flavor = item && flavors.find((f) => f.id === item.flavorId)
+        return (
+          <StateChooser
+            open
+            title={item ? `${order.customerName} · ${flavor?.name ?? 'Gusto'}` : order.customerName}
+            subtitle={
+              item
+                ? `${item.qty} pz · ora: ${ITEM_STATE_LABEL[item.state]}`
+                : `Tutta la riga · ${orderTotal(order)} pz`
+            }
+            choices={item ? cellChoices(order, item.flavorId, item.state) : rowChoices(order)}
+            onChoose={applyChoice}
+            onClose={() => setChoosing(null)}
+          />
+        )
+      })()}
 
       {undo && (
         <div

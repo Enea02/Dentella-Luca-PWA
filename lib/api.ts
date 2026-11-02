@@ -18,8 +18,10 @@ import type {
 import type {
   NewPanettoneOrder,
   PanettoneFlavor,
+  PanettoneItemState,
   PanettoneOrder,
   PanettoneStatus,
+  PanettoniForCustomer,
   PlanParams,
   PlanSettings,
 } from './panettoni/types'
@@ -255,6 +257,13 @@ export const panettoniApi = {
       body: JSON.stringify({ orderedIds }),
     }).then(() => undefined),
   orders: (season: number) => fetchRequired<PanettoneOrder[]>(`/panettoni/orders?season=${season}`),
+  // Linked customers' panettoni for one day (Ordini of the gestionale).
+  forDate: (date: string) => fetchRequired<PanettoniForCustomer[]>(`/panettoni/by-date?date=${date}`),
+  addForCustomer: (customerId: string, date: string, flavorId: string, qty: number) =>
+    fetchRequired<{ orderId: string }>('/panettoni/by-date', {
+      method: 'POST',
+      body: JSON.stringify({ customerId, date, flavorId, qty }),
+    }),
   createOrder: (order: NewPanettoneOrder) =>
     fetchRequired<PanettoneOrder>('/panettoni/orders', { method: 'POST', body: JSON.stringify(order) }),
   updateOrder: (id: string, fields: Partial<Omit<NewPanettoneOrder, 'items'>>) =>
@@ -269,10 +278,10 @@ export const panettoniApi = {
       method: 'POST',
       body: JSON.stringify({ status }),
     }).then(() => undefined),
-  setDelivered: (id: string, flavorId: string, delivered: boolean) =>
-    fetchApi<void>(`/panettoni/orders/${id}/deliver`, {
+  setItemState: (id: string, flavorId: string, state: PanettoneItemState) =>
+    fetchApi<void>(`/panettoni/orders/${id}/item-state`, {
       method: 'POST',
-      body: JSON.stringify({ flavorId, delivered }),
+      body: JSON.stringify({ flavorId, state }),
     }).then(() => undefined),
   setItemQty: (id: string, flavorId: string, qty: number) =>
     fetchApi<void>(`/panettoni/orders/${id}/items`, {

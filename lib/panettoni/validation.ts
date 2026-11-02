@@ -2,7 +2,7 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
-import { panettoneFlavors } from '@/lib/db/schema'
+import { customers, panettoneFlavors } from '@/lib/db/schema'
 import { currentSeason } from './types'
 
 export const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -16,6 +16,7 @@ const optionalText = (max: number) =>
     .transform((v) => (v ? v : null))
 
 export const OrderFieldsSchema = z.object({
+  customerId: z.string().uuid().nullish().transform((v) => v ?? null),
   customerName: z.string().trim().min(1).max(120),
   phone: optionalText(40),
   deliveryKind: z.enum(['preciso', 'entro']),
@@ -63,4 +64,14 @@ export async function flavorsBelongTo(bakeryId: string, flavorIds: string[]): Pr
     .from(panettoneFlavors)
     .where(and(eq(panettoneFlavors.bakeryId, bakeryId), inArray(panettoneFlavors.id, unique)))
   return rows.length === unique.length
+}
+
+/** True when the customer belongs to this bakery (null = no link, always fine). */
+export async function customerBelongsTo(bakeryId: string, customerId: string | null | undefined): Promise<boolean> {
+  if (!customerId) return true
+  const rows = await db
+    .select({ id: customers.id })
+    .from(customers)
+    .where(and(eq(customers.bakeryId, bakeryId), eq(customers.id, customerId)))
+  return rows.length === 1
 }

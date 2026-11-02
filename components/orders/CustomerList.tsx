@@ -13,10 +13,12 @@ import { NewDailyOrderDialog } from './NewDailyOrderDialog'
 
 interface CustomerListProps {
   orders: ComputedDayOrder[]
+  // Panettoni pieces of the day per customer (customers linked to the Panettoni section).
+  panettoniPieces?: Map<string, number>
   isLoading: boolean
 }
 
-export function CustomerList({ orders, isLoading }: CustomerListProps) {
+export function CustomerList({ orders, panettoniPieces, isLoading }: CustomerListProps) {
   const { selectedCustomerId, setSelectedCustomerId, selectedDate, workMode } = useAppStore()
   const { user } = useAuth()
   const { createOrder } = useOrders(selectedDate)
@@ -28,7 +30,8 @@ export function CustomerList({ orders, isLoading }: CustomerListProps) {
   )
     // Hide orders with no items: a fixed customer "emptied" for the day (B1) has an
     // empty daily-order override and must disappear from the list for that date.
-    .filter(order => order.items.length > 0)
+    // A customer with only panettoni that day stays.
+    .filter(order => order.items.length > 0 || (panettoniPieces?.get(order.customerId) ?? 0) > 0)
     .filter(order => order.customerName.toLowerCase().includes(search.toLowerCase()))
 
   const handleCreateOrder = async (customerId: string, items: OrderItem[]) => {
@@ -82,6 +85,7 @@ export function CustomerList({ orders, isLoading }: CustomerListProps) {
                 const doneCount = order.items.filter(i => i.done).length
                 const totalCount = order.items.length
                 const status = getOrderStatus(order.items)
+                const pieces = panettoniPieces?.get(order.customerId) ?? 0
 
                 return (
                   <button
@@ -109,6 +113,11 @@ export function CustomerList({ orders, isLoading }: CustomerListProps) {
                         isSelected ? 'text-slate-300' : 'text-slate-500'
                       )}>
                         {order.customerType === 'fixed' ? 'Fisso' : 'Giornaliero'}
+                        {pieces > 0 && (
+                          <span className={isSelected ? 'text-amber-300' : 'text-amber-700'}>
+                            {' · '}{pieces} {pieces === 1 ? 'panettone' : 'panettoni'}
+                          </span>
+                        )}
                       </span>
                     </div>
                     <div className={cn(
@@ -118,7 +127,7 @@ export function CustomerList({ orders, isLoading }: CustomerListProps) {
                         status === 'done' ? 'text-emerald-700' :
                         status === 'partial' ? 'text-red-700' : 'text-slate-500'
                     )}>
-                      {doneCount}/{totalCount}
+                      {totalCount > 0 ? `${doneCount}/${totalCount}` : ''}
                     </div>
                   </button>
                 )

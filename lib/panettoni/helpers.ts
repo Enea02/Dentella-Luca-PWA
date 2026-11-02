@@ -1,6 +1,13 @@
 // Small shared helpers for the Panettoni section (client + server safe).
 import { seasonEnd, weekday } from './plan'
-import type { PanettoneFlavor, PanettoneOrder, PanettoneStatus, PlanSettings } from './types'
+import type {
+  PanettoneFlavor,
+  PanettoneItemState,
+  PanettoneOrder,
+  PanettoneOrderItem,
+  PanettoneStatus,
+  PlanSettings,
+} from './types'
 
 /** Today in the bakery's timezone (the server runs in UTC). */
 export function todayRome(now: Date = new Date()): string {
@@ -30,9 +37,6 @@ export const longDate = (iso: string) =>
 
 export const orderTotal = (o: Pick<PanettoneOrder, 'items'>) => o.items.reduce((a, i) => a + i.qty, 0)
 
-/** Tap cycle on a table row. */
-export const NEXT_STATUS: Record<PanettoneStatus, PanettoneStatus> = { todo: 'stock', stock: 'done', done: 'todo' }
-
 /**
  * The confirmed plan no longer reflects the orders: an order was created or
  * its items/delivery changed after the confirmation (see updatedAt in schema).
@@ -42,41 +46,57 @@ export function isPlanStale(orders: PanettoneOrder[], settings: PlanSettings | u
   return orders.some((o) => o.status !== 'done' && o.updatedAt > settings.confirmedAt!)
 }
 
-// ---- Per-flavor delivery (mirrors syncStatusWithDeliveries on the server) ----
+// ---- Per-flavor state (one cell of the orders table) ----
 
-/** Order status implied by its deliveries: all flavors delivered → done; a flavor taken back → stock. */
-export function statusAfterDeliveries(o: Pick<PanettoneOrder, 'status' | 'items'>): PanettoneStatus {
-  const allDelivered = o.items.length > 0 && o.items.every((i) => i.delivered)
-  if (allDelivered) return 'done'
-  return o.status === 'done' ? 'stock' : o.status
+/** Item state that a whole-row status implies (tap on the customer, "Ripristina"). */
+export const ITEM_STATE_FOR_STATUS: Record<PanettoneStatus, PanettoneItemState> = {
+  todo: 'todo',
+  stock: 'stock',
+  done: 'delivered',
 }
 
-/** Applies a cell delivery locally (optimistic UI), including the resulting status. */
-export function withDelivery(o: PanettoneOrder, flavorId: string, delivered: boolean): PanettoneOrder {
-  const next = { ...o, items: o.items.map((i) => (i.flavorId === flavorId ? { ...i, delivered } : i)) }
-  return withStatusFromDeliveries(next)
+/**
+ * The order status follows its items — the ONE rule, used by the server
+ * (syncStatusWithItems) and by the optimistic UI: all delivered → done;
+ * all at least in stock → stock; otherwise todo. An order without items
+ * keeps its current status.
+ */
+export function statusFromItems(
+  items: Pick<PanettoneOrderItem, 'state'>[],
+  current: PanettoneStatus,
+): PanettoneStatus {
+  if (items.length === 0) return current
+  if (items.every((i) => i.state === 'delivered')) return 'done'
+  if (items.every((i) => i.state !== 'todo')) return 'stock'
+  return 'todo'
 }
 
-export function withStatusFromDeliveries(o: PanettoneOrder): PanettoneOrder {
-  const status = statusAfterDeliveries(o)
+/** Re-derives the order status after its items changed (optimistic UI). */
+export function withStatusFromItems(o: PanettoneOrder): PanettoneOrder {
+  const status = statusFromItems(o.items, o.status)
   if (status === o.status) return o
   return { ...o, status, doneAt: status === 'done' ? new Date().toISOString() : null }
 }
 
-/** Applies a row status change locally: `done` delivers everything, leaving `done` resets deliveries. */
+/** Applies one cell's new state locally, including the resulting order status. */
+export function withItemState(o: PanettoneOrder, flavorId: string, state: PanettoneItemState): PanettoneOrder {
+  return withStatusFromItems({ ...o, items: o.items.map((i) => (i.flavorId === flavorId ? { ...i, state } : i)) })
+}
+
+/** Applies a whole-row status locally: every cell takes the matching state. */
 export function withRowStatus(o: PanettoneOrder, status: PanettoneStatus): PanettoneOrder {
-  const items =
-    status === 'done'
-      ? o.items.map((i) => ({ ...i, delivered: true }))
-      : o.status === 'done'
-        ? o.items.map((i) => ({ ...i, delivered: false }))
-        : o.items
-  return { ...o, status, items, doneAt: status === 'done' ? new Date().toISOString() : null }
+  const state = ITEM_STATE_FOR_STATUS[status]
+  return {
+    ...o,
+    status,
+    items: o.items.map((i) => ({ ...i, state })),
+    doneAt: status === 'done' ? new Date().toISOString() : null,
+  }
 }
 
 /** Pieces still to hand over (flavors not yet delivered). */
 export const pendingQty = (o: Pick<PanettoneOrder, 'items'>) =>
-  o.items.reduce((a, i) => a + (i.delivered ? 0 : i.qty), 0)
+  o.items.reduce((a, i) => a + (i.state === 'delivered' ? 0 : i.qty), 0)
 
 /**
  * Flavor columns to show: active flavors plus hidden ones still present in an

@@ -5,7 +5,8 @@ import { panettoneOrderItems, panettoneOrders } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
 import { loadOrders } from '@/lib/panettoni/server'
-import { OrderFieldsSchema, flavorsBelongTo, seasonParam } from '@/lib/panettoni/validation'
+import { seasonForDate } from '@/lib/panettoni/types'
+import { OrderFieldsSchema, customerBelongsTo, flavorsBelongTo, seasonParam } from '@/lib/panettoni/validation'
 
 export const GET = withAuth(
   async (req: NextRequest, { auth }) => {
@@ -16,7 +17,7 @@ export const GET = withAuth(
 )
 
 const CreateSchema = OrderFieldsSchema.extend({
-  // Defaults to the year of the delivery date.
+  // Defaults to the campaign of the delivery date (see seasonForDate).
   season: z.number().int().min(2000).max(2100).optional(),
   items: z
     .array(z.object({ flavorId: z.string().uuid(), qty: z.number().int().min(1).max(10_000) }))
@@ -29,6 +30,9 @@ export const POST = withAuth(
     if (!(await flavorsBelongTo(auth.bakeryId, items.map((i) => i.flavorId)))) {
       return NextResponse.json({ error: 'Gusto non valido' }, { status: 400 })
     }
+    if (!(await customerBelongsTo(auth.bakeryId, fields.customerId))) {
+      return NextResponse.json({ error: 'Cliente non valido' }, { status: 400 })
+    }
 
     // Same flavor twice in the payload → one row with the summed quantity.
     const merged = new Map<string, number>()
@@ -39,7 +43,7 @@ export const POST = withAuth(
         .insert(panettoneOrders)
         .values({
           bakeryId: auth.bakeryId,
-          season: season ?? Number(fields.deliveryDate.slice(0, 4)),
+          season: season ?? seasonForDate(fields.deliveryDate),
           ...fields,
           deposit: fields.deposit === null ? null : String(fields.deposit),
         })

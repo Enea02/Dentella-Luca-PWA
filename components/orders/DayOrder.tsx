@@ -11,6 +11,9 @@ import { ProductLineOwner } from './ProductLineOwner'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ProductPicker } from './ProductPicker'
+import { PanettoniBlock } from './PanettoniBlock'
+import { AddPanettone } from './AddPanettone'
+import type { PanettoneItemState, PanettoniForCustomer } from '@/lib/panettoni/types'
 import { getOrderStatus } from '@/lib/utils'
 import { STATUS_COLORS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
@@ -34,6 +37,11 @@ interface DayOrderProps {
   onUpdateItem?: (productId: string, quantity: number, unit: 'pieces' | 'kg') => void
   onRemoveItem?: (productId: string) => void
   onClearOrder?: () => Promise<void>
+  // This customer's panettoni for the day (Panettoni section, linked customers only).
+  panettoni?: PanettoniForCustomer[]
+  onAddPanettone?: (flavorId: string, qty: number) => Promise<void>
+  onSetPanettoneQty?: (orderId: string, flavorId: string, qty: number) => void
+  onSetPanettoneState?: (orderId: string, flavorId: string, state: PanettoneItemState) => void
 }
 
 export function DayOrder({
@@ -44,6 +52,10 @@ export function DayOrder({
   onUpdateItem,
   onRemoveItem,
   onClearOrder,
+  panettoni = [],
+  onAddPanettone,
+  onSetPanettoneQty,
+  onSetPanettoneState,
 }: DayOrderProps) {
   const { user } = useAuth()
   const canEdit = can(user, 'orders:edit')
@@ -124,12 +136,14 @@ export function DayOrder({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className={cn(
-              'px-3 py-1 rounded-full text-xs font-medium',
-              STATUS_COLORS[status]
-            )}>
-              {doneCount}/{order.items.length} completati
-            </div>
+            {order.items.length > 0 && (
+              <div className={cn(
+                'px-3 py-1 rounded-full text-xs font-medium',
+                STATUS_COLORS[status]
+              )}>
+                {doneCount}/{order.items.length} completati
+              </div>
+            )}
             {canEdit && onClearOrder && order.items.length > 0 && (
               <button
                 type="button"
@@ -185,11 +199,14 @@ export function DayOrder({
                 />
               )
             })}
+            {onSetPanettoneQty && onSetPanettoneState && (
+              <PanettoniBlock orders={panettoni} onSetQty={onSetPanettoneQty} onSetState={onSetPanettoneState} />
+            )}
           </div>
         </ScrollArea>
         {/* Add item – owner only. Below the list on mobile, left column on desktop. */}
         {canEdit && onAddItem && (
-          <div className="order-last border-t border-slate-100 p-3 lg:order-first lg:w-72 lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r">
+          <div className="order-last grid content-start gap-2 border-t border-slate-100 p-3 lg:order-first lg:w-72 lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r">
             {!addingItem ? (
               <button
                 type="button"
@@ -257,6 +274,7 @@ export function DayOrder({
                 </div>
               </div>
             )}
+            {onAddPanettone && <AddPanettone onAdd={onAddPanettone} />}
           </div>
         )}
       </div>
