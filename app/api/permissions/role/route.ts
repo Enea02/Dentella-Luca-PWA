@@ -5,7 +5,7 @@ import { db } from '@/lib/db/client'
 import { rolePermissionOverrides } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
-import { PERMISSION_KEYS } from '@/lib/auth/permissions'
+import { PERMISSION_KEYS, isAdminRole } from '@/lib/auth/permissions'
 import { wouldLockOut } from '@/lib/auth/lockout'
 
 const Schema = z.object({
@@ -19,6 +19,11 @@ const Schema = z.object({
 export const PUT = withAuth(
   async (req: NextRequest, { auth }) => {
     const { role, permission, allowed } = await parseJson(req, Schema)
+
+    // The admin always has every permission. Removing a stale override (null) is allowed.
+    if (isAdminRole(role) && allowed !== null) {
+      return NextResponse.json({ error: "I permessi dell'admin non si possono modificare" }, { status: 400 })
+    }
 
     // Lock-out check: would this leave the bakery with zero permissions:manage holders?
     if (permission === 'permissions:manage') {

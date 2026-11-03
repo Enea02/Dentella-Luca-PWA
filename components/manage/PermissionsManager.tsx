@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, RotateCcw, ChevronDown, X, Check, Minus, KeyRound } from 'lucide-react'
+import { Loader2, RotateCcw, ChevronDown, X, Check, Minus, KeyRound, Lock } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useUsers } from '@/hooks/useData'
 import { useAuth } from '@/hooks/useAuth'
-import { can, PERMISSION_KEYS, type PermissionKey } from '@/lib/auth/permissions'
+import { can, isAdminRole, PERMISSION_KEYS, type PermissionKey } from '@/lib/auth/permissions'
 import type { Role } from '@/lib/types'
 
 const ROLE_ORDER: Role[] = ['admin', 'owner', 'staff']
@@ -44,6 +44,7 @@ const PERMISSION_LABEL: Partial<Record<PermissionKey, string>> = {
   'orders:edit': 'Modifica ordini',
   'orders:read': 'Lettura ordini',
   'orders:toggle': 'Toggle "fatto"',
+  'orders:postpone': 'Posticipare prodotti',
 }
 
 export function PermissionsManager() {
@@ -78,7 +79,8 @@ export function PermissionsManager() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-slate-500 bg-amber-50 rounded-xl px-3 py-2 border border-amber-100">
-        ⚠️ Le modifiche si applicano dopo che l&apos;utente coinvolto fa logout e nuovo login.
+        ⚠️ Le modifiche si applicano dopo che l&apos;utente coinvolto fa logout e nuovo login. L&apos;admin ha sempre
+        tutti i permessi e non si possono modificare.
       </p>
 
       <Tabs defaultValue="role">
@@ -113,6 +115,7 @@ function RoleMatrix({ data, onChange }: { data: PermissionsData; onChange: () =>
   }, [data.roleOverrides])
 
   function effective(role: Role, permission: PermissionKey): boolean {
+    if (isAdminRole(role)) return true // always everything, overrides ignored
     const ov = overrideMap.get(`${role}|${permission}`)
     if (ov !== undefined) return ov
     return (data.defaults[permission] as readonly Role[]).includes(role)
@@ -165,6 +168,19 @@ function RoleMatrix({ data, onChange }: { data: PermissionsData; onChange: () =>
                 <span className="hidden md:inline ml-2 text-xs text-slate-400 font-mono">{perm}</span>
               </td>
               {ROLE_ORDER.map((role) => {
+                if (isAdminRole(role)) {
+                  return (
+                    <td key={role} className="text-center px-1 md:px-3 py-2.5">
+                      <span
+                        className="inline-flex w-7 h-7 rounded-md items-center justify-center bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200"
+                        title="L'admin ha sempre tutti i permessi: non si può modificare"
+                        aria-label="Sempre permesso (bloccato)"
+                      >
+                        <Lock className="h-3.5 w-3.5" />
+                      </span>
+                    </td>
+                  )
+                }
                 const eff = effective(role, perm)
                 const overridden = isOverridden(role, perm)
                 return (
@@ -263,7 +279,9 @@ function UserMatrix({ data, onChange }: { data: PermissionsData; onChange: () =>
                     <p className="text-sm font-medium text-slate-900 truncate">{u.email}</p>
                     <p className="text-xs text-slate-500">
                       {ROLE_LABEL[u.role]}
-                      {overrides.length > 0 && ` · ${overrides.length} override`}
+                      {isAdminRole(u.role)
+                        ? ' · tutti i permessi'
+                        : overrides.length > 0 && ` · ${overrides.length} override`}
                     </p>
                   </div>
                 </div>
@@ -288,7 +306,14 @@ function UserMatrix({ data, onChange }: { data: PermissionsData; onChange: () =>
               )}
             </div>
 
-            {isOpen && (
+            {isOpen && isAdminRole(u.role) && (
+              <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50/50 px-4 py-3 text-sm text-slate-600">
+                <Lock className="h-4 w-4 shrink-0 text-emerald-600" />
+                L&apos;admin ha sempre tutti i permessi: non si possono togliere, nemmeno da un altro admin.
+              </div>
+            )}
+
+            {isOpen && !isAdminRole(u.role) && (
               <UserPermissionRows
                 userId={u.id}
                 role={u.role}

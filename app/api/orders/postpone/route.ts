@@ -109,6 +109,5 @@ export const POST = withAuth(
     await notify(auth.bakeryId, { type: 'orders.updated', date: toDate })
     return new NextResponse(null, { status: 204 })
   },
-  // Everyone can postpone (decided with the bakery): staff notices missing products first.
-  { require: 'orders:toggle' },
+  { require: 'orders:postpone' },
 )

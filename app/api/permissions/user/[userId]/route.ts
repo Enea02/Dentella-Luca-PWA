@@ -5,7 +5,7 @@ import { db } from '@/lib/db/client'
 import { userPermissionOverrides, users } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
-import { PERMISSION_KEYS } from '@/lib/auth/permissions'
+import { PERMISSION_KEYS, isAdminRole } from '@/lib/auth/permissions'
 import { wouldLockOut } from '@/lib/auth/lockout'
 
 const Schema = z.object({
@@ -22,11 +22,16 @@ export const PUT = withAuth<{ userId: string }>(
 
     // Verify the target user belongs to this bakery
     const [target] = await db
-      .select({ id: users.id })
+      .select({ id: users.id, role: users.role })
       .from(users)
       .where(and(eq(users.id, userId), eq(users.bakeryId, auth.bakeryId)))
       .limit(1)
     if (!target) return NextResponse.json({ error: 'Utente non trovato' }, { status: 404 })
+
+    // An admin user always has every permission. Removing a stale override (null) is allowed.
+    if (isAdminRole(target.role) && allowed !== null) {
+      return NextResponse.json({ error: "I permessi di un admin non si possono modificare" }, { status: 400 })
+    }
 
     // Lock-out check on permissions:manage
     if (permission === 'permissions:manage') {

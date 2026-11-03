@@ -69,7 +69,7 @@ export function DayOrder({
 }: DayOrderProps) {
   const { user } = useAuth()
   const canEdit = can(user, 'orders:edit')
-  const canPostpone = can(user, 'orders:toggle') // everyone, decided with the bakery
+  const canPostpone = can(user, 'orders:postpone')
   const selectedDate = useAppStore((s) => s.selectedDate)
   const [postponing, setPostponing] = useState<
     | { kind: 'product'; productId: string; title: string; subtitle: string }

@@ -82,5 +82,5 @@ export const POST = withAuth(
     await notify(auth.bakeryId, { type: 'panettoni.updated' })
     return NextResponse.json(result)
   },
-  { require: 'orders:toggle' },
+  { require: 'orders:postpone' },
 )
