@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { Check, Link2, Package } from 'lucide-react'
+import { Fragment, useEffect, useRef, useState } from 'react'
+import { Check, ChevronDown, Link2, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 import { usePanettoneFlavors, usePanettoneOrders } from '@/hooks/usePanettoni'
@@ -67,6 +67,15 @@ export function OrdersTable() {
   const [undo, setUndo] = useState<{ name: string; run: () => void } | null>(null)
   // Tap on a number (flavorId) or on the customer (whole row, flavorId null): ask what happened.
   const [choosing, setChoosing] = useState<{ orderId: string; flavorId: string | null } | null>(null)
+  // Rows opened with the arrow: phone, deposit and notes below the row.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const toggleExpanded = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
   // Gesture bookkeeping (refs: must not re-render, and timers read the latest values).
   const ordersRef = useRef(orders)
@@ -79,6 +88,21 @@ export function OrdersTable() {
   const lastCell = useRef<{ key: CellKey; at: number } | null>(null)
   const swallowCellClick = useRef(false) // set by a long press: its click must not toggle
   const editorClosedAt = useRef(0)
+
+  // Width of the visible table area: full-width rows (details, empty state) get it
+  // explicitly so they never push the table wider than the screen.
+  const hasTable = shownFlavors(flavors, orders).length > 0 // the scroll container is mounted
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [viewWidth, setViewWidth] = useState<number>()
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const update = () => setViewWidth(el.clientWidth)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [hasTable])
 
   useEffect(
     () => () => {
@@ -242,7 +266,7 @@ export function OrdersTable() {
           {isLoading ? 'Caricamento…' : 'Dati non disponibili.'}
         </div>
       ) : (
-        <div className="overflow-auto max-h-[calc(100dvh-260px)] rounded-xl bg-white ring-1 ring-slate-300 shadow-sm">
+        <div ref={scrollRef} className="overflow-auto max-h-[calc(100dvh-260px)] rounded-xl bg-white ring-1 ring-slate-300 shadow-sm">
           <table className="w-full border-separate border-spacing-0 text-sm">
             <colgroup>
               <col className="w-[150px] sm:w-[220px]" />
@@ -316,7 +340,7 @@ export function OrdersTable() {
                 <tr>
                   <td colSpan={colCount} className="p-0 border-b border-slate-200">
                     {/* Sticky so the message stays in view when the table is wider than the screen. */}
-                    <div className="sticky left-0 flex h-32 w-[calc(100vw-2rem)] max-w-full items-center justify-center px-4 text-center text-[13px] text-slate-400">
+                    <div style={{ width: viewWidth }} className="sticky left-0 flex h-32 items-center justify-center px-4 text-center text-[13px] text-slate-400">
                       {ordersLoading
                         ? 'Caricamento…'
                         : canEdit
@@ -331,113 +355,155 @@ export function OrdersTable() {
                 const cell = cn(st.row, 'h-12 border-b', st.line)
                 const itemOf = new Map(o.items.map((i) => [i.flavorId, i]))
                 const deliveredQty = orderTotal(o) - pendingQty(o)
+                const open = expanded.has(o.id)
                 return (
-                  <tr
-                    key={o.id}
-                    // Reached only from customer / delivery / total cells: numbers stop propagation.
-                    onClick={() => onRowClick(o.id)}
-                    title={canToggle ? 'Tocca il nome per cambiare lo stato di tutta la riga' : undefined}
-                    className={cn('select-none [-webkit-touch-callout:none]', canToggle && 'cursor-pointer')}
-                  >
-                    <td className={cn(cell, 'sticky left-0 z-20 px-3 border-r border-r-slate-300')}>
-                      <div className="flex items-center gap-2.5 max-w-[124px] sm:max-w-[196px]">
-                        <span className={cn('shrink-0 h-2.5 w-2.5 rounded-full ring-2 ring-white', st.dot)} />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1 font-semibold text-slate-900 leading-tight">
-                            <span className="truncate">{o.customerName}</span>
-                            {o.customerId && (
-                              <Link2
-                                className="h-3.5 w-3.5 shrink-0 text-indigo-500"
-                                aria-label="Collegato al gestionale"
-                              />
-                            )}
-                          </div>
-                          <div className="text-[11px] leading-tight text-slate-500 truncate">{o.phone ?? '—'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className={cn(cell, 'px-3 whitespace-nowrap border-r-2 border-r-slate-400')}>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            'inline-flex h-[18px] w-12 shrink-0 items-center justify-center rounded-full text-[10px] font-bold uppercase leading-none tracking-[.03em]',
-                            o.deliveryKind === 'preciso' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600',
-                          )}
-                        >
-                          {o.deliveryKind === 'preciso' ? 'il' : 'entro'}
-                        </span>
-                        <span className="text-[13px] font-semibold leading-[18px] text-slate-900 tabular-nums">
-                          {shortDate(o.deliveryDate)}
-                        </span>
-                      </div>
-                      <div className="mt-0.5 pl-[54px] text-[11px] leading-tight text-slate-500 truncate">{o.pickupTime ?? '—'}</div>
-                    </td>
-                    {visibleFlavors.map((f, i) => {
-                      const key: CellKey = `${o.id}:${f.id}`
-                      const item = itemOf.get(f.id)
-                      const v = item?.qty
-                      const state = item?.state ?? 'todo'
-                      return (
-                        <td
-                          key={f.id}
-                          className={cn(
-                            cell,
-                            'p-0 text-center',
-                            v && CELL_STYLE[state].bg,
-                            i === visibleFlavors.length - 1 ? 'border-r-2 border-r-slate-400' : cn('border-r', st.line),
-                          )}
-                        >
-                          {editing === key ? (
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              min={0}
-                              autoFocus
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={commitEdit}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === 'Escape') commitEdit()
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              onFocus={(e) => e.target.select()}
-                              className="w-11 h-8 text-center text-sm font-semibold border-2 border-blue-600 rounded-md bg-blue-50 text-slate-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                          ) : (
-                            <div
-                              onClick={(e) => onCellClick(e, key, v)}
-                              onPointerDown={() => onCellPointerDown(key, v)}
-                              onPointerUp={cancelPress}
-                              onPointerLeave={cancelPress}
-                              onPointerCancel={cancelPress}
-                              onContextMenu={(e) => canEdit && e.preventDefault()}
-                              title={v ? CELL_STYLE[state].title : undefined}
-                              className={cn(
-                                'relative flex items-center justify-center h-12 text-sm font-semibold tabular-nums',
-                                (v && canToggle) || canEdit ? 'cursor-pointer' : 'cursor-default',
-                                v && CELL_STYLE[state].text,
-                              )}
-                              style={v && state === 'todo' ? { color: f.color } : undefined}
-                            >
-                              {v || ''}
-                              {v && state === 'stock' && (
-                                <Package className="absolute top-1 right-1 h-3 w-3 text-amber-600" strokeWidth={2.5} />
-                              )}
-                              {v && state === 'delivered' && (
-                                <Check className="absolute top-1 right-1 h-3 w-3 text-emerald-600" strokeWidth={3} />
-                              )}
+                  <Fragment key={o.id}>
+                    <tr
+                      // Reached only from customer / delivery / total cells: numbers stop propagation.
+                      onClick={() => onRowClick(o.id)}
+                      title={canToggle ? 'Tocca il nome per cambiare lo stato di tutta la riga' : undefined}
+                      className={cn('select-none [-webkit-touch-callout:none]', canToggle && 'cursor-pointer')}
+                    >
+                      <td className={cn(cell, 'sticky left-0 z-20 pl-3 pr-1 border-r border-r-slate-300')}>
+                        <div className="flex items-center gap-1">
+                          <div className="flex min-w-0 flex-1 items-center gap-2.5 max-w-[124px] sm:max-w-[196px]">
+                            <span className={cn('shrink-0 h-2.5 w-2.5 rounded-full ring-2 ring-white', st.dot)} />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1 font-semibold text-slate-900 leading-tight">
+                                <span className="truncate">{o.customerName}</span>
+                                {o.customerId && (
+                                  <Link2
+                                    className="h-3.5 w-3.5 shrink-0 text-indigo-500"
+                                    aria-label="Collegato al gestionale"
+                                  />
+                                )}
+                              </div>
+                              <div className="text-[11px] leading-tight text-slate-500 truncate">{o.phone ?? '—'}</div>
                             </div>
-                          )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation() // the arrow only opens the details, never the chooser
+                              toggleExpanded(o.id)
+                            }}
+                            aria-expanded={open}
+                            aria-label={open ? 'Nascondi dettagli' : 'Mostra telefono, acconto e note'}
+                            title={open ? 'Nascondi dettagli' : 'Telefono, acconto e note'}
+                            className="ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-700 hover:bg-black/5"
+                          >
+                            <ChevronDown
+                              className={cn('h-6 w-6 transition-transform', open && 'rotate-180')}
+                              strokeWidth={2.5}
+                            />
+                          </button>
+                        </div>
+                      </td>
+                      <td className={cn(cell, 'px-3 whitespace-nowrap border-r-2 border-r-slate-400')}>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              'inline-flex h-[18px] w-12 shrink-0 items-center justify-center rounded-full text-[10px] font-bold uppercase leading-none tracking-[.03em]',
+                              o.deliveryKind === 'preciso' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600',
+                            )}
+                          >
+                            {o.deliveryKind === 'preciso' ? 'il' : 'entro'}
+                          </span>
+                          <span className="text-[13px] font-semibold leading-[18px] text-slate-900 tabular-nums">
+                            {shortDate(o.deliveryDate)}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 pl-[54px] text-[11px] leading-tight text-slate-500 truncate">{o.pickupTime ?? '—'}</div>
+                      </td>
+                      {visibleFlavors.map((f, i) => {
+                        const key: CellKey = `${o.id}:${f.id}`
+                        const item = itemOf.get(f.id)
+                        const v = item?.qty
+                        const state = item?.state ?? 'todo'
+                        return (
+                          <td
+                            key={f.id}
+                            className={cn(
+                              cell,
+                              'p-0 text-center',
+                              v && CELL_STYLE[state].bg,
+                              i === visibleFlavors.length - 1 ? 'border-r-2 border-r-slate-400' : cn('border-r', st.line),
+                            )}
+                          >
+                            {editing === key ? (
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min={0}
+                                autoFocus
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onBlur={commitEdit}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === 'Escape') commitEdit()
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                onFocus={(e) => e.target.select()}
+                                className="w-11 h-8 text-center text-sm font-semibold border-2 border-blue-600 rounded-md bg-blue-50 text-slate-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                            ) : (
+                              <div
+                                onClick={(e) => onCellClick(e, key, v)}
+                                onPointerDown={() => onCellPointerDown(key, v)}
+                                onPointerUp={cancelPress}
+                                onPointerLeave={cancelPress}
+                                onPointerCancel={cancelPress}
+                                onContextMenu={(e) => canEdit && e.preventDefault()}
+                                title={v ? CELL_STYLE[state].title : undefined}
+                                className={cn(
+                                  'relative flex items-center justify-center h-12 text-sm font-semibold tabular-nums',
+                                  (v && canToggle) || canEdit ? 'cursor-pointer' : 'cursor-default',
+                                  v && CELL_STYLE[state].text,
+                                )}
+                                style={v && state === 'todo' ? { color: f.color } : undefined}
+                              >
+                                {v || ''}
+                                {v && state === 'stock' && (
+                                  <Package className="absolute top-1 right-1 h-3 w-3 text-amber-600" strokeWidth={2.5} />
+                                )}
+                                {v && state === 'delivered' && (
+                                  <Check className="absolute top-1 right-1 h-3 w-3 text-emerald-600" strokeWidth={3} />
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        )
+                      })}
+                      <td className={cn(cell, 'px-2 text-center tabular-nums')}>
+                        <div className="text-sm font-bold leading-tight text-slate-900">{orderTotal(o)}</div>
+                        {deliveredQty > 0 && (
+                          <div className="text-[10px] font-semibold leading-tight text-emerald-700">{deliveredQty} cons.</div>
+                        )}
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr>
+                        <td colSpan={colCount} className="p-0 bg-slate-50 border-b border-slate-200">
+                          {/* Sticky: stays in view when the table is scrolled sideways (phone). */}
+                          <div style={{ width: viewWidth }} className="sticky left-0 grid grid-cols-2 gap-x-8 gap-y-2 px-4 py-3 text-sm sm:grid-cols-[auto_auto_minmax(0,1fr)]">
+                            <OrderDetail label="Telefono">
+                              {o.phone ? (
+                                <a href={`tel:${o.phone.replace(/\s+/g, '')}`} className="text-slate-900 underline underline-offset-2">
+                                  {o.phone}
+                                </a>
+                              ) : (
+                                '—'
+                              )}
+                            </OrderDetail>
+                            <OrderDetail label="Acconto">{o.deposit != null ? EURO.format(o.deposit) : '—'}</OrderDetail>
+                            <OrderDetail label="Note" className="col-span-2 sm:col-span-1">
+                              <span className="whitespace-pre-wrap break-words">{o.notes || '—'}</span>
+                            </OrderDetail>
+                          </div>
                         </td>
-                      )
-                    })}
-                    <td className={cn(cell, 'px-2 text-center tabular-nums')}>
-                      <div className="text-sm font-bold leading-tight text-slate-900">{orderTotal(o)}</div>
-                      {deliveredQty > 0 && (
-                        <div className="text-[10px] font-semibold leading-tight text-emerald-700">{deliveredQty} cons.</div>
-                      )}
-                    </td>
-                  </tr>
+                      </tr>
+                    )}
+                  </Fragment>
                 )
               })}
             </tbody>
@@ -510,6 +576,17 @@ export function OrdersTable() {
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+const EURO = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' })
+
+function OrderDetail({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
+  return (
+    <div className={cn('min-w-0', className)}>
+      <div className="text-[10px] font-bold uppercase tracking-[.05em] text-slate-400">{label}</div>
+      <div className="font-medium text-slate-900">{children}</div>
     </div>
   )
 }
