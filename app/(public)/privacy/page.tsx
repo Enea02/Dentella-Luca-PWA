@@ -8,8 +8,7 @@ export const metadata: Metadata = {
 }
 
 // Pagina pubblica (raggiungibile pre-login). Contenuto allineato a
-// docs/legal/privacy-policy.md. I segnaposto «...» vanno compilati dal Titolare
-// prima della pubblicazione definitiva (vedi docs/legal/README.md).
+// docs/legal/privacy-policy.md (dati del Titolare dalla visura camerale).
 export default function PrivacyPolicyPage() {
   return (
     <LegalLayout
@@ -17,11 +16,10 @@ export default function PrivacyPolicyPage() {
       subtitle="ai sensi degli artt. 13 e 14 del Regolamento (UE) 2016/679 (“GDPR”) e del D.lgs. 196/2003 come modificato dal D.lgs. 101/2018 (“Codice Privacy”)"
       meta={
         <>
-          <strong className="font-medium text-slate-800">Ultimo aggiornamento:</strong> «GG/MM/AAAA»
+          <strong className="font-medium text-slate-800">Ultimo aggiornamento:</strong> 06/11/2026
           <br />
-          <strong className="font-medium text-slate-800">Applicazione:</strong> «Nome
-          dell&apos;applicazione» — gestionale per panificio (ordini, produzione, clienti,
-          statistiche)
+          <strong className="font-medium text-slate-800">Applicazione:</strong> DENTELLA-Luca-PWA —
+          gestionale per panificio (ordini, produzione, clienti, statistiche)
         </>
       }
     >
@@ -40,12 +38,12 @@ export default function PrivacyPolicyPage() {
         </Note>
         <p>Il Titolare del trattamento è:</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
-          <li><strong>Denominazione / Ditta:</strong> «Ragione sociale del panificio»</li>
-          <li><strong>Sede legale:</strong> «Via, numero civico, CAP, Città (Prov.)»</li>
-          <li><strong>P. IVA / Codice Fiscale:</strong> «P.IVA / C.F.»</li>
-          <li><strong>E-mail:</strong> «email@panificio.it»</li>
-          <li><strong>PEC:</strong> «pec@panificio.it» <em>(se disponibile)</em></li>
-          <li><strong>Telefono:</strong> «numero di telefono»</li>
+          <li><strong>Denominazione / Ditta:</strong> Dentella Tiziano (impresa individuale)</li>
+          <li><strong>Sede legale:</strong> Via XX Settembre 10, 13024 Cellio (VC)</li>
+          <li><strong>P. IVA / Codice Fiscale:</strong> P. IVA 01972900029 — C.F. DNTTZN68S20L669Y</li>
+          <li><strong>E-mail:</strong> panificiodentella@gmail.com</li>
+          <li><strong>PEC:</strong> panificiodentella@pec.it</li>
+          <li><strong>Telefono:</strong> 0163 49680</li>
         </ul>
         <p>
           Per ogni richiesta relativa al trattamento dei dati personali è possibile scrivere
@@ -53,8 +51,8 @@ export default function PrivacyPolicyPage() {
         </p>
         <Subheading>Responsabile della protezione dei dati (DPO)</Subheading>
         <p>
-          «Il Titolare non ha nominato un DPO, non sussistendone l&apos;obbligo ai sensi dell&apos;art.
-          37 GDPR.» <em>oppure, se nominato:</em> «DPO: nome e contatto».
+          Il Titolare non ha nominato un DPO, non sussistendone l&apos;obbligo ai sensi dell&apos;art.
+          37 GDPR.
         </p>
       </Section>
 
@@ -158,8 +156,8 @@ export default function PrivacyPolicyPage() {
           head={['Dato', 'Conservazione']}
           rows={[
             ['Account operatori', 'Per la durata del rapporto di lavoro/collaborazione; cancellati o anonimizzati alla cessazione, salvo obblighi di legge'],
-            ['Anagrafica clienti e ordini', 'Per il tempo necessario alla gestione dell’attività; gli ordini storici sono conservati per finalità gestionali/statistiche e per gli eventuali termini fiscali e civilistici applicabili («es. 10 anni» ove pertinente)'],
-            ['Log tecnici e di accesso', '«Indicare periodo, es. 6–12 mesi»'],
+            ['Anagrafica clienti e ordini', 'Per il tempo necessario alla gestione dell’attività; gli ordini storici sono conservati per finalità gestionali/statistiche e per gli eventuali termini fiscali e civilistici applicabili (10 anni ove pertinente)'],
+            ['Log tecnici e di accesso', '12 mesi'],
             ['Statistiche anonime di utilizzo', 'In forma aggregata e anonima, non riconducibile a singoli interessati'],
           ]}
         />

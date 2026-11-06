@@ -1,7 +1,7 @@
 # Termini e Condizioni d'uso
 
-**Ultimo aggiornamento:** «GG/MM/AAAA»
-**Applicazione:** DENTELLA-LUCA-PWA — gestionale per panificio
+**Ultimo aggiornamento:** 06/11/2026
+**Applicazione:** DENTELLA-Luca-PWA — gestionale per panificio
 
 > ⚠️ **Nota.** Bozza non costituente consulenza legale. Far validare da un professionista prima dell'adozione.
 
@@ -9,9 +9,9 @@
 
 ## 1. Oggetto e ambito di applicazione
 
-I presenti Termini e Condizioni (“Termini”) disciplinano l'accesso e l'utilizzo dell'applicazione web/PWA DENTELLA-LUCA-PWA (di seguito l'“Applicazione”), un gestionale ad uso interno destinato alla gestione di Pesatura, anagrafica clienti e statistiche di un panificio.
+I presenti Termini e Condizioni (“Termini”) disciplinano l'accesso e l'utilizzo dell'applicazione web/PWA DENTELLA-Luca-PWA (di seguito l'“Applicazione”), un gestionale ad uso interno destinato alla gestione di Pesatura, anagrafica clienti e statistiche di un panificio.
 
-L'Applicazione è messa a disposizione da Enea Frontera (di seguito il “Fornitore” o il “Titolare”) ed è riservata agli utenti autorizzati (titolare, amministratore e personale del panificio, di seguito gli “Utenti”).
+L'Applicazione è sviluppata e messa a disposizione da Enea Frontera (di seguito il “Fornitore”) per Dentella Tiziano (impresa individuale), titolare dell'attività e titolare del trattamento dei dati (di seguito il “Titolare”), ed è riservata agli utenti autorizzati (titolare, amministratore e personale del panificio, di seguito gli “Utenti”).
 
 L'accesso e l'uso dell'Applicazione comportano l'accettazione integrale dei presenti Termini. L'Utente che non li accetti è tenuto a non utilizzare l'Applicazione.
 
@@ -96,11 +96,11 @@ Il Titolare si riserva il diritto di modificare i presenti Termini in qualsiasi 
 
 ## 11. Legge applicabile e foro competente
 
-I presenti Termini sono regolati dalla **legge italiana**. Per ogni controversia è competente in via esclusiva il Foro di «Città del Titolare», fatte salve le disposizioni inderogabili a tutela del consumatore ove applicabili.
+I presenti Termini sono regolati dalla **legge italiana**. Per ogni controversia è competente in via esclusiva il Foro di Vercelli, fatte salve le disposizioni inderogabili a tutela del consumatore ove applicabili.
 
 ---
 
 ## 12. Contatti
 
 Per qualsiasi comunicazione relativa ai presenti Termini è possibile contattare:
-«Ragione sociale» — «email@panificio.it» — «PEC (se disponibile)».
+Dentella Tiziano (impresa individuale), Via XX Settembre 10, 13024 Cellio (VC) — P. IVA 01972900029 — panificiodentella@gmail.com — PEC: panificiodentella@pec.it — Tel. 0163 49680.

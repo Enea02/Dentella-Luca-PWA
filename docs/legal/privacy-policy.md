@@ -2,8 +2,8 @@
 
 _ai sensi degli artt. 13 e 14 del Regolamento (UE) 2016/679 (“GDPR”) e del D.lgs. 196/2003 come modificato dal D.lgs. 101/2018 (“Codice Privacy”)_
 
-**Ultimo aggiornamento:** «GG/MM/AAAA»
-**Applicazione:** «Nome dell'applicazione» — gestionale per panificio (ordini, produzione, clienti, statistiche)
+**Ultimo aggiornamento:** 06/11/2026
+**Applicazione:** DENTELLA-Luca-PWA — gestionale per panificio (ordini, produzione, clienti, statistiche)
 
 > ⚠️ **Nota.** Il presente testo è una bozza predisposta sulla base dell'architettura tecnica dell'applicazione. Non costituisce consulenza legale. Prima della pubblicazione va validato da un professionista (avvocato / consulente privacy / DPO).
 
@@ -13,19 +13,18 @@ _ai sensi degli artt. 13 e 14 del Regolamento (UE) 2016/679 (“GDPR”) e del D
 
 Il Titolare del trattamento è:
 
-- **Denominazione / Ditta:** «Ragione sociale del panificio»
-- **Sede legale:** «Via, numero civico, CAP, Città (Prov.)»
-- **P. IVA / Codice Fiscale:** «P.IVA / C.F.»
-- **E-mail:** «email@panificio.it»
-- **PEC:** «pec@panificio.it» _(se disponibile)_
-- **Telefono:** «numero di telefono»
+- **Denominazione / Ditta:** Dentella Tiziano (impresa individuale)
+- **Sede legale:** Via XX Settembre 10, 13024 Cellio (VC)
+- **P. IVA / Codice Fiscale:** P. IVA 01972900029 — C.F. DNTTZN68S20L669Y
+- **E-mail:** panificiodentella@gmail.com
+- **PEC:** panificiodentella@pec.it
+- **Telefono:** 0163 49680
 
 Per ogni richiesta relativa al trattamento dei dati personali è possibile scrivere all'indirizzo e-mail sopra indicato.
 
 ### Responsabile della protezione dei dati (DPO)
 
-«Il Titolare non ha nominato un DPO, non sussistendone l'obbligo ai sensi dell'art. 37 GDPR.»
-_oppure, se nominato:_ «DPO: nome e contatto».
+Il Titolare non ha nominato un DPO, non sussistendone l'obbligo ai sensi dell'art. 37 GDPR.
 
 ---
 
@@ -101,8 +100,8 @@ Alcuni fornitori (es. Neon, Vercel, Cloudflare) sono società con sede negli Sta
 | Dato | Conservazione |
 |---|---|
 | Account operatori | Per la durata del rapporto di lavoro/collaborazione; cancellati o anonimizzati alla cessazione, salvo obblighi di legge |
-| Anagrafica clienti e ordini | Per il tempo necessario alla gestione dell'attività; gli ordini storici sono conservati per finalità gestionali/statistiche e per gli eventuali termini fiscali e civilistici applicabili («es. 10 anni» ove pertinente) |
-| Log tecnici e di accesso | «Indicare periodo, es. 6–12 mesi» |
+| Anagrafica clienti e ordini | Per il tempo necessario alla gestione dell'attività; gli ordini storici sono conservati per finalità gestionali/statistiche e per gli eventuali termini fiscali e civilistici applicabili (10 anni ove pertinente) |
+| Log tecnici e di accesso | 12 mesi |
 | Statistiche anonime di utilizzo | In forma aggregata e anonima, non riconducibile a singoli interessati |
 
 Al termine dei periodi indicati i dati sono cancellati o resi anonimi in modo irreversibile.

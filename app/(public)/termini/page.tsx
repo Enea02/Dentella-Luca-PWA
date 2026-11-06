@@ -8,17 +8,16 @@ export const metadata: Metadata = {
 }
 
 // Pagina pubblica (raggiungibile pre-login). Contenuto allineato a
-// docs/legal/termini-e-condizioni.md. Il segnaposto «Città del Titolare» (foro
-// competente) e la data vanno compilati prima della pubblicazione definitiva.
+// docs/legal/termini-e-condizioni.md.
 export default function TerminiPage() {
   return (
     <LegalLayout
       title="Termini e Condizioni d'uso"
       meta={
         <>
-          <strong className="font-medium text-slate-800">Ultimo aggiornamento:</strong> «GG/MM/AAAA»
+          <strong className="font-medium text-slate-800">Ultimo aggiornamento:</strong> 06/11/2026
           <br />
-          <strong className="font-medium text-slate-800">Applicazione:</strong> DENTELLA-LUCA-PWA —
+          <strong className="font-medium text-slate-800">Applicazione:</strong> DENTELLA-Luca-PWA —
           gestionale per panificio
         </>
       }
@@ -26,7 +25,7 @@ export default function TerminiPage() {
       <Section title="1. Oggetto e ambito di applicazione">
         <p>
           I presenti Termini e Condizioni (“Termini”) disciplinano l&apos;accesso e l&apos;utilizzo
-          dell&apos;applicazione web/PWA DENTELLA-LUCA-PWA (di seguito l&apos;“Applicazione”), un
+          dell&apos;applicazione web/PWA DENTELLA-Luca-PWA (di seguito l&apos;“Applicazione”), un
           gestionale ad uso interno destinato alla gestione di pesatura, anagrafica clienti e
           statistiche di un panificio.
         </p>
@@ -153,7 +152,7 @@ export default function TerminiPage() {
       <Section title="11. Legge applicabile e foro competente">
         <p>
           I presenti Termini sono regolati dalla <strong>legge italiana</strong>. Per ogni
-          controversia è competente in via esclusiva il Foro di «Città del Titolare», fatte salve le
+          controversia è competente in via esclusiva il Foro di Vercelli, fatte salve le
           disposizioni inderogabili a tutela del consumatore ove applicabili.
         </p>
       </Section>
@@ -161,7 +160,7 @@ export default function TerminiPage() {
       <Section title="12. Contatti">
         <p>
           Per comunicazioni relative al <strong>software</strong> (Fornitore): Enea Frontera, persona
-          fisica — C.F. «codice fiscale» — «email».
+          fisica — enea.alice.it@gmail.com.
         </p>
         <p>
           Per comunicazioni relative al <strong>trattamento dei dati</strong> (Titolare): il

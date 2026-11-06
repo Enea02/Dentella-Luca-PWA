@@ -7,8 +7,7 @@ export const metadata: Metadata = {
 }
 
 // Pagina pubblica (raggiungibile pre-login). Contenuto allineato a
-// docs/legal/cookie-policy.md. I segnaposto «...» vanno compilati dal Titolare
-// prima della pubblicazione definitiva (vedi docs/legal/README.md).
+// docs/legal/cookie-policy.md (dati del Titolare dalla visura camerale).
 export default function CookiePolicyPage() {
   return (
     <LegalLayout
@@ -16,10 +15,11 @@ export default function CookiePolicyPage() {
       subtitle="Informativa sull'uso di cookie e tecnologie di memorizzazione, ai sensi dell'art. 122 del D.lgs. 196/2003, della Direttiva ePrivacy 2002/58/CE e delle Linee guida del Garante sui cookie del 10 giugno 2021."
       meta={
         <>
-          <strong className="font-medium text-slate-800">Ultimo aggiornamento:</strong> «GG/MM/AAAA»
+          <strong className="font-medium text-slate-800">Ultimo aggiornamento:</strong> 06/11/2026
           <br />
-          <strong className="font-medium text-slate-800">Titolare:</strong> «Ragione sociale del
-          panificio» — «email@panificio.it»
+          <strong className="font-medium text-slate-800">Titolare:</strong> Dentella Tiziano (impresa
+          individuale), Via XX Settembre 10, 13024 Cellio (VC) — panificiodentella@gmail.com — PEC:
+          panificiodentella@pec.it
         </>
       }
     >
@@ -139,7 +139,7 @@ export default function CookiePolicyPage() {
       <Section title="5. Riferimenti e ulteriori informazioni">
         <p>
           Per qualsiasi richiesta è possibile contattare il Titolare all&apos;indirizzo
-          «email@panificio.it».
+          panificiodentella@gmail.com.
         </p>
       </Section>
     </LegalLayout>

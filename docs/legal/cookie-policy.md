@@ -2,8 +2,8 @@
 
 _Informativa sull'uso di cookie e tecnologie di memorizzazione, ai sensi dell'art. 122 del D.lgs. 196/2003, della Direttiva ePrivacy 2002/58/CE e delle Linee guida del Garante sui cookie del 10 giugno 2021._
 
-**Ultimo aggiornamento:** «GG/MM/AAAA»
-**Titolare:** «Ragione sociale del panificio» — «email@panificio.it»
+**Ultimo aggiornamento:** 06/11/2026
+**Titolare:** Dentella Tiziano (impresa individuale), Via XX Settembre 10, 13024 Cellio (VC) — panificiodentella@gmail.com — PEC: panificiodentella@pec.it
 
 > ⚠️ **Nota.** Bozza basata sull'inventario tecnico reale dell'applicazione. Non costituisce consulenza legale; far validare prima della pubblicazione.
 
@@ -75,4 +75,4 @@ L'utente può comunque gestire o eliminare i cookie e lo storage locale tramite 
 
 Per tutto quanto non espressamente indicato si rinvia alla [Informativa sul trattamento dei dati personali (Privacy Policy)](privacy-policy.md).
 
-Per qualsiasi richiesta è possibile contattare il Titolare all'indirizzo «email@panificio.it».
+Per qualsiasi richiesta è possibile contattare il Titolare all'indirizzo panificiodentella@gmail.com.

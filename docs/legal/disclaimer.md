@@ -1,6 +1,6 @@
 # Disclaimer e Limitazione di responsabilità
 
-**Ultimo aggiornamento:** «GG/MM/AAAA»
+**Ultimo aggiornamento:** 06/11/2026
 **Applicazione:** DENTELLA-Luca-PWA — gestionale per panificio
 
 > ⚠️ **Nota.** Bozza non costituente consulenza legale. Far validare da un professionista prima dell'adozione.
@@ -9,7 +9,7 @@
 
 ## 1. Premessa
 
-Il presente disclaimer disciplina i limiti di garanzia e di responsabilità relativi all'utilizzo dell'applicazione DENTELLA-Luca-PWA(l'“Applicazione”), fornita da «Ragione sociale / Fornitore» (il “Fornitore”). Esso integra i [Termini e Condizioni d'uso](termini-e-condizioni.md).
+Il presente disclaimer disciplina i limiti di garanzia e di responsabilità relativi all'utilizzo dell'applicazione DENTELLA-Luca-PWA (l'“Applicazione”), fornita da Enea Frontera (il “Fornitore”) per Dentella Tiziano (impresa individuale). Esso integra i [Termini e Condizioni d'uso](termini-e-condizioni.md).
 
 ---
 
@@ -64,4 +64,4 @@ Il Fornitore si riserva di modificare il presente disclaimer in qualsiasi moment
 
 ## 9. Contatti
 
-Per qualsiasi chiarimento: «Ragione sociale» — «email@panificio.it».
+Per qualsiasi chiarimento: Dentella Tiziano (impresa individuale), Via XX Settembre 10, 13024 Cellio (VC) — panificiodentella@gmail.com — PEC: panificiodentella@pec.it.
