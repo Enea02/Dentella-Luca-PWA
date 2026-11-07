@@ -279,6 +279,10 @@ export function OrdersTable() {
           <Legend swatch="bg-amber-100 border-amber-500">In magazzino</Legend>
           <Legend swatch="bg-emerald-100 border-emerald-500">Consegnato</Legend>
           <span className="text-slate-400">· tutto consegnato → archivio</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-600" />
+            telefono, acconto o note
+          </span>
         </div>
         <span className="text-xs text-slate-400">
           {canEdit
@@ -422,14 +426,27 @@ export function OrdersTable() {
                               toggleExpanded(o.id)
                             }}
                             aria-expanded={open}
-                            aria-label={open ? 'Nascondi dettagli' : 'Mostra telefono, acconto e note'}
+                            aria-label={
+                              open
+                                ? 'Nascondi dettagli'
+                                : hasDetails(o)
+                                  ? 'Mostra telefono, acconto e note (compilati)'
+                                  : 'Mostra telefono, acconto e note'
+                            }
                             title={open ? 'Nascondi dettagli' : 'Telefono, acconto e note'}
-                            className="ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-700 hover:bg-black/5"
+                            className="relative ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-700 hover:bg-black/5"
                           >
                             <ChevronDown
                               className={cn('h-6 w-6 transition-transform', open && 'rotate-180')}
                               strokeWidth={2.5}
                             />
+                            {/* Red dot: telefono, acconto or note filled in. */}
+                            {hasDetails(o) && (
+                              <span
+                                aria-hidden
+                                className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-rose-600 ring-2 ring-white"
+                              />
+                            )}
                           </button>
                         </div>
                       </td>
@@ -656,6 +673,9 @@ export function OrdersTable() {
     </div>
   )
 }
+
+/** Something to see under the arrow: telefono, acconto or note filled in. */
+const hasDetails = (o: PanettoneOrder) => !!o.phone?.trim() || o.deposit != null || !!o.notes?.trim()
 
 const EURO = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' })
 
