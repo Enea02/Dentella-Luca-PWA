@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { panettoneOrderItems, panettoneOrders } from '@/lib/db/schema'
@@ -10,7 +10,9 @@ import { syncStatusWithItems } from '@/lib/panettoni/server'
 // Sets the state of ONE flavor of an order (a tap on a number in the orders
 // table): da fare / in magazzino / consegnato. The order status follows (all
 // delivered → archive). Sends the TARGET state → idempotent, safe to replay
-// from background sync.
+// from background sync. Back to "da fare" from in magazzino / consegnato
+// ("Togli dal magazzino") restarts the baked count from 0 so the planner
+// schedules those pieces again (same rule as itemWithState on the client).
 const Schema = z.object({
   flavorId: z.string().uuid(),
   state: z.enum(['todo', 'stock', 'delivered']),
@@ -27,12 +29,16 @@ export const POST = withAuth<{ id: string }>(
         .from(panettoneOrders)
         .where(and(eq(panettoneOrders.id, id), eq(panettoneOrders.bakeryId, auth.bakeryId)))
       if (!order) return null
-      const updated = await tx
+      const cell = and(eq(panettoneOrderItems.orderId, id), eq(panettoneOrderItems.flavorId, flavorId))
+      const [prev] = await tx.select({ state: panettoneOrderItems.state }).from(panettoneOrderItems).where(cell)
+      if (!prev) return null
+      const backToTodo = state === 'todo' && prev.state !== 'todo'
+      await tx
         .update(panettoneOrderItems)
-        .set({ state })
-        .where(and(eq(panettoneOrderItems.orderId, id), eq(panettoneOrderItems.flavorId, flavorId)))
-        .returning({ id: panettoneOrderItems.id })
-      if (updated.length === 0) return null
+        .set(backToTodo ? { state, producedQty: 0 } : { state })
+        .where(cell)
+      // Pieces to bake again: the confirmed plan is out of date.
+      if (backToTodo) await tx.update(panettoneOrders).set({ updatedAt: sql`now()` }).where(eq(panettoneOrders.id, id))
       return syncStatusWithItems(tx, id)
     })
     if (!status) return NextResponse.json({ error: 'Not found' }, { status: 404 })

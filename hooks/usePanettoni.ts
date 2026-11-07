@@ -90,9 +90,24 @@ export function usePanettoneFlavors() {
   }
 }
 
-export function usePanettoneOrders(season: number) {
+/** Campaigns with orders (archive season picker), newest first. */
+export function usePanettoneSeasons() {
+  const { data } = useSWR<number[]>(['panettoni', 'seasons'], () => panettoniApi.seasons(), { keepPreviousData: true })
+  return data ?? []
+}
+
+const isSeasonsKey = (key: unknown) => Array.isArray(key) && key[0] === 'panettoni' && key[1] === 'seasons'
+
+/** Orders of one campaign, or of every campaign ('all', archive). */
+export function usePanettoneOrders(season: number | 'all') {
   const { mutate: globalMutate } = useSWRConfig()
   const refreshDays = () => globalMutate(isDayKey)
+  // Edit/delete can move an order to another campaign (or empty one): the
+  // other season lists (archive) and the season picker must follow.
+  const refreshSeasons = () => {
+    globalMutate((key) => isSeasonKey(key) && (key as unknown[])[2] !== season)
+    globalMutate(isSeasonsKey)
+  }
   const { data, error, isLoading, mutate } = useSWR<PanettoneOrder[]>(
     ['panettoni', 'orders', season],
     () => panettoniApi.orders(season),
@@ -128,10 +143,13 @@ export function usePanettoneOrders(season: number) {
       const created = await panettoniApi.createOrder(order)
       await mutate((current) => [...(current ?? []), created], { revalidate: true })
       refreshDays()
+      refreshSeasons()
       return created
     },
     updateOrder: (id: string, fields: Partial<Omit<NewPanettoneOrder, 'items'>>) =>
-      patchOrder(id, (o) => ({ ...o, ...fields }) as PanettoneOrder, () => panettoniApi.updateOrder(id, fields)),
+      patchOrder(id, (o) => ({ ...o, ...fields }) as PanettoneOrder, () => panettoniApi.updateOrder(id, fields)).finally(
+        refreshSeasons,
+      ),
     deleteOrder: (id: string) =>
       mutate(
         async (current) => {
@@ -145,9 +163,16 @@ export function usePanettoneOrders(season: number) {
           populateCache: false,
           revalidate: true,
         },
-      ).finally(refreshDays),
+      ).finally(() => {
+        refreshDays()
+        refreshSeasons()
+      }),
+    // Also refreshes the other season lists: "Ripristina" in the archive
+    // ('all') must show up in the current table.
     setStatus: (id: string, status: PanettoneStatus) =>
-      patchOrder(id, (o) => withRowStatus(o, status), () => panettoniApi.setStatus(id, status)),
+      patchOrder(id, (o) => withRowStatus(o, status), () => panettoniApi.setStatus(id, status)).finally(
+        refreshSeasons,
+      ),
     // One cell: da fare / in magazzino / consegnato. All delivered → archive.
     setItemState: (id: string, flavorId: string, state: PanettoneItemState) =>
       patchOrder(

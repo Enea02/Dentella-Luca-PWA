@@ -3,6 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db/client'
 import { customers, panettoneFlavors } from '@/lib/db/schema'
+import { textKey } from './helpers'
 import { currentSeason } from './types'
 
 export const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -30,14 +31,7 @@ export const FlavorNameSchema = z.string().trim().min(1).max(40)
 export const FlavorColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Colore non valido')
 
 /** Case- and accent-insensitive comparison key for flavor names ("Caffè" = "caffe"). */
-export const flavorNameKey = (name: string) =>
-  name
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+export const flavorNameKey = textKey
 
 /** True when another flavor of the bakery already has this name. */
 export async function flavorNameTaken(bakeryId: string, name: string, exceptId?: string): Promise<boolean> {

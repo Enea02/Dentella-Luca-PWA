@@ -5,6 +5,7 @@ import { panettoneOrders } from '@/lib/db/schema'
 import { withAuth, parseJson } from '@/lib/api/handler'
 import { notify } from '@/lib/realtime/notify'
 import { loadOrders } from '@/lib/panettoni/server'
+import { seasonForDate } from '@/lib/panettoni/types'
 import { OrderFieldsSchema, customerBelongsTo } from '@/lib/panettoni/validation'
 
 const UpdateSchema = OrderFieldsSchema.partial()
@@ -24,6 +25,8 @@ export const PATCH = withAuth<{ id: string }>(
         ...fields,
         ...(deposit !== undefined && { deposit: deposit === null ? null : String(deposit) }),
         ...(affectsPlan && { updatedAt: new Date() }),
+        // Moving the delivery across January moves the order to that campaign.
+        ...(fields.deliveryDate !== undefined && { season: seasonForDate(fields.deliveryDate) }),
       })
       .where(and(eq(panettoneOrders.id, id), eq(panettoneOrders.bakeryId, auth.bakeryId)))
       .returning({ id: panettoneOrders.id })

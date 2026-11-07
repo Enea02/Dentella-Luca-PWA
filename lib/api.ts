@@ -262,7 +262,10 @@ export const panettoniApi = {
       method: 'POST',
       body: JSON.stringify({ orderedIds }),
     }).then(() => undefined),
-  orders: (season: number) => fetchRequired<PanettoneOrder[]>(`/panettoni/orders?season=${season}`),
+  // 'all' = every campaign (archive "Tutti gli anni").
+  orders: (season: number | 'all') => fetchRequired<PanettoneOrder[]>(`/panettoni/orders?season=${season}`),
+  // Campaigns with orders, newest first (always includes the current one).
+  seasons: () => fetchRequired<number[]>('/panettoni/seasons'),
   // Linked customers' panettoni for one day (Ordini of the gestionale).
   forDate: (date: string) => fetchRequired<PanettoniForCustomer[]>(`/panettoni/by-date?date=${date}`),
   addForCustomer: (customerId: string, date: string, flavorId: string, qty: number) =>

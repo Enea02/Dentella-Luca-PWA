@@ -22,6 +22,9 @@ export const ITEM_STATE_LABEL: Record<PanettoneItemState, string> = {
  * in the Panettoni table and in Ordini (gestionale). `completesOrder`: choosing
  * "Consegnato" would deliver the last flavor (the order goes to the archive).
  */
+/** Hint of every choice that sends pieces back to "da fare" (see itemWithState). */
+export const BACK_TO_TODO_HINT = 'Da rifare: torna nel piano di produzione'
+
 export function itemChoices(current: PanettoneItemState, completesOrder: boolean): StateChoice[] {
   const delivered: StateChoice = {
     state: 'delivered',
@@ -29,10 +32,10 @@ export function itemChoices(current: PanettoneItemState, completesOrder: boolean
     hint: completesOrder ? "Tutto consegnato: l'ordine va in archivio" : undefined,
   }
   if (current === 'todo') return [{ state: 'stock', label: 'In magazzino' }, delivered]
-  if (current === 'stock') return [delivered, { state: 'todo', label: 'Rimetti da fare' }]
+  if (current === 'stock') return [delivered, { state: 'todo', label: 'Togli dal magazzino', hint: BACK_TO_TODO_HINT }]
   return [
     { state: 'stock', label: 'Rimetti in magazzino' },
-    { state: 'todo', label: 'Rimetti da fare' },
+    { state: 'todo', label: 'Rimetti da fare', hint: BACK_TO_TODO_HINT },
   ]
 }
 

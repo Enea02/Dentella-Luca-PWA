@@ -10,7 +10,9 @@ import { OrderFieldsSchema, customerBelongsTo, flavorsBelongTo, seasonParam } fr
 
 export const GET = withAuth(
   async (req: NextRequest, { auth }) => {
-    const season = seasonParam(req.url)
+    // ?season=all → every campaign (archive "Tutti gli anni").
+    const all = new URL(req.url).searchParams.get('season') === 'all'
+    const season = all ? undefined : seasonParam(req.url)
     return NextResponse.json(await loadOrders(auth.bakeryId, { season }))
   },
   { require: 'orders:read' },

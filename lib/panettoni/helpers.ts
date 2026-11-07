@@ -78,9 +78,25 @@ export function withStatusFromItems(o: PanettoneOrder): PanettoneOrder {
   return { ...o, status, doneAt: status === 'done' ? new Date().toISOString() : null }
 }
 
+/**
+ * A cell taking a new state. Back to "da fare" from in magazzino / consegnato
+ * ("Togli dal magazzino") means those pieces are gone (given to someone else):
+ * the baked count restarts from 0, so the planner schedules them again. Same
+ * rule on the server (item-state and status routes).
+ */
+export function itemWithState<T extends Pick<PanettoneOrderItem, 'state' | 'producedQty'>>(
+  item: T,
+  state: PanettoneItemState,
+): T {
+  return state === 'todo' && item.state !== 'todo' ? { ...item, state, producedQty: 0 } : { ...item, state }
+}
+
 /** Applies one cell's new state locally, including the resulting order status. */
 export function withItemState(o: PanettoneOrder, flavorId: string, state: PanettoneItemState): PanettoneOrder {
-  return withStatusFromItems({ ...o, items: o.items.map((i) => (i.flavorId === flavorId ? { ...i, state } : i)) })
+  return withStatusFromItems({
+    ...o,
+    items: o.items.map((i) => (i.flavorId === flavorId ? itemWithState(i, state) : i)),
+  })
 }
 
 /** Applies a whole-row status locally: every cell takes the matching state. */
@@ -89,7 +105,7 @@ export function withRowStatus(o: PanettoneOrder, status: PanettoneStatus): Panet
   return {
     ...o,
     status,
-    items: o.items.map((i) => ({ ...i, state })),
+    items: o.items.map((i) => itemWithState(i, state)),
     doneAt: status === 'done' ? new Date().toISOString() : null,
   }
 }
@@ -123,4 +139,61 @@ export function normalizeTime(raw: string): string {
     if (hh <= 23 && mm <= 59) return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
   }
   return text.slice(0, 40)
+}
+
+/** Case-, accent- and punctuation-insensitive key ("Caffè Rossi" = "caffe rossi"). */
+export const textKey = (text: string) =>
+  text
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+// ---- Archive: delivered orders grouped by customer ----
+
+export interface ArchiveCustomer {
+  key: string
+  name: string // from the most recent order
+  customerId: string | null
+  orders: PanettoneOrder[] // most recent first
+  byFlavor: Map<string, number> // delivered pieces per flavorId
+  total: number
+}
+
+const lastDone = (o: PanettoneOrder) => o.doneAt ?? o.deliveryDate
+
+/**
+ * Archived orders grouped by customer: orders linked to the same customer of
+ * the gestionale go together; unlinked ones join by name (a linked group with
+ * the same name included). Groups sorted by their latest delivery, most recent
+ * first. `search` filters by name (same insensitive match as textKey).
+ */
+export function archiveByCustomer(orders: PanettoneOrder[], search = ''): ArchiveCustomer[] {
+  const done = orders.filter((o) => o.status === 'done').sort((a, b) => lastDone(b).localeCompare(lastDone(a)))
+  const groups = new Map<string, ArchiveCustomer>()
+  const linkedByName = new Map<string, string>() // name key → group key of a linked customer
+  for (const o of done) {
+    if (o.customerId) linkedByName.set(textKey(o.customerName), `c:${o.customerId}`)
+  }
+  for (const o of done) {
+    const nameKey = textKey(o.customerName)
+    const key = o.customerId ? `c:${o.customerId}` : (linkedByName.get(nameKey) ?? `n:${nameKey}`)
+    let g = groups.get(key)
+    if (!g) {
+      g = { key, name: o.customerName, customerId: o.customerId, orders: [], byFlavor: new Map(), total: 0 }
+      groups.set(key, g)
+    }
+    if (!g.customerId && o.customerId) g.customerId = o.customerId
+    g.orders.push(o)
+    for (const i of o.items) {
+      if (i.state !== 'delivered') continue
+      g.byFlavor.set(i.flavorId, (g.byFlavor.get(i.flavorId) ?? 0) + i.qty)
+      g.total += i.qty
+    }
+  }
+  const q = textKey(search)
+  const all = [...groups.values()]
+  return q ? all.filter((g) => g.orders.some((o) => textKey(o.customerName).includes(q))) : all
 }

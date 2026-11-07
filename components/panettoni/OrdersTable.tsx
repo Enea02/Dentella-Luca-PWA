@@ -1,8 +1,18 @@
 'use client'
 
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Link2, Package } from 'lucide-react'
+import { Check, ChevronDown, Link2, Package, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useAuth } from '@/hooks/useAuth'
 import { usePanettoneFlavors, usePanettoneOrders } from '@/hooks/usePanettoni'
 import { can } from '@/lib/auth/permissions'
@@ -15,7 +25,8 @@ import {
 } from '@/lib/panettoni/helpers'
 import { currentSeason, type PanettoneItemState, type PanettoneOrder } from '@/lib/panettoni/types'
 import { cn } from '@/lib/utils'
-import { ITEM_STATE_LABEL, StateChooser, itemChoices, type StateChoice } from './StateChooser'
+import { BACK_TO_TODO_HINT, ITEM_STATE_LABEL, StateChooser, itemChoices, type StateChoice } from './StateChooser'
+import { NewOrderDialog } from './NewOrderDialog'
 import { STATUS_STYLE, alpha } from './status'
 
 const TAP_DELAY = 300 // ms: a single tap on a number waits this long to rule out a double tap
@@ -41,7 +52,15 @@ function rowChoices(order: PanettoneOrder): StateChoice[] {
   const choices: StateChoice[] = []
   if (!all('stock')) choices.push({ state: 'stock', label: 'Tutto in magazzino' })
   choices.push({ state: 'delivered', label: 'Tutto consegnato', hint: "L'ordine va in archivio" })
-  if (!all('todo')) choices.push({ state: 'todo', label: 'Rimetti tutto da fare' })
+  if (!all('todo')) {
+    // Only stock (no delivered) → it's taking them out of the stock.
+    const onlyStock = order.items.every((i) => i.state !== 'delivered')
+    choices.push({
+      state: 'todo',
+      label: onlyStock ? 'Togli tutto dal magazzino' : 'Rimetti tutto da fare',
+      hint: BACK_TO_TODO_HINT,
+    })
+  }
   return choices
 }
 
@@ -58,6 +77,7 @@ export function OrdersTable() {
     setStatus,
     setItemState,
     setItemQty,
+    deleteOrder,
   } = usePanettoneOrders(season)
   const isLoading = flavorsLoading || ordersLoading
   const loadError = flavorsError || ordersError
@@ -76,6 +96,20 @@ export function OrdersTable() {
       else next.add(id)
       return next
     })
+
+  // Expanded row → "Modifica" (same dialog as Nuovo ordine) / "Elimina" (asks first).
+  // The order is kept while the dialog closes, so its content doesn't flash.
+  const [editOrder, setEditOrder] = useState<PanettoneOrder | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleting, setDeleting] = useState<PanettoneOrder | null>(null)
+  const confirmDelete = () => {
+    const o = deleting
+    if (!o) return
+    setDeleting(null)
+    deleteOrder(o.id)
+      .then(() => toast.success(`Ordine di ${o.customerName} eliminato`))
+      .catch(() => toast.error("Errore durante l'eliminazione"))
+  }
 
   // Gesture bookkeeping (refs: must not re-render, and timers read the latest values).
   const ordersRef = useRef(orders)
@@ -499,6 +533,29 @@ export function OrdersTable() {
                             <OrderDetail label="Note" className="col-span-2 sm:col-span-1">
                               <span className="whitespace-pre-wrap break-words">{o.notes || '—'}</span>
                             </OrderDetail>
+                            {canEdit && (
+                              <div className="col-span-2 flex flex-wrap gap-2 pt-1 sm:col-span-3">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditOrder(o)
+                                    setEditOpen(true)
+                                  }}
+                                  className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-3.5 text-[13px] font-semibold text-slate-700 hover:bg-slate-100"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                  Modifica
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleting(o)}
+                                  className="inline-flex h-10 items-center gap-2 rounded-[10px] border border-rose-200 bg-white px-3.5 text-[13px] font-semibold text-rose-700 hover:bg-rose-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Elimina
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -561,6 +618,26 @@ export function OrdersTable() {
           />
         )
       })()}
+
+      <NewOrderDialog open={editOpen} onOpenChange={setEditOpen} season={season} order={editOrder} />
+
+      <AlertDialog open={!!deleting} onOpenChange={(next) => !next && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare l&apos;ordine di {deleting?.customerName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleting ? `${orderTotal(deleting)} panettoni · ` : ''}L&apos;ordine viene cancellato del tutto e non si
+              può annullare.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="rounded-xl bg-red-600 hover:bg-red-700">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {undo && (
         <div
